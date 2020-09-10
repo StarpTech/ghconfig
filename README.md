@@ -7,7 +7,7 @@ single repository manually. Ghconfig helps you to automate such tasks. Clone you
 
 ## Help
 
-Ensure that your personal access token is accessible in your environment with `GITHUB_TOKEN`.
+Ensure that your personal access token is exported as `GITHUB_TOKEN`.
 
 ```
 ghconfig --help
