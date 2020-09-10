@@ -15,7 +15,7 @@ import (
 var (
 	appDesc = `ghconfig is a CLI library to manage (.github) repository configurations as a fleet.
 
-Github CI Workflow files are in many cases very similiar. Imagine a organization that has focused on delivering Node.js projects. If you need to update a single Job you have to update every
+Github CI Workflow files are in organizations very similiar. If you need to update a single Job you have to update every
 single repository manually. Ghconfig helps you to automate such tasks. Clone your workflow directory (.github/workflows) to (.ghconfig/workflows). Use Go Templates and sync it to all your repositories. 
 	`
 	app             = kingpin.New("ghconfig", appDesc)
