@@ -14,7 +14,9 @@ require (
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
+	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6

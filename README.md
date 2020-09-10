@@ -2,9 +2,12 @@
 
 ghconfig is a CLI library to manage (.github) repository configurations as a fleet.
 
-E.g Github CI Workflow files are in many cases very similiar. Imagine a organization that has focused on delivering Node.js projects. If you need to update a single Job you have to update every single repository manually. Ghconfig helps you to automate such tasks. We are looking for a local folder ".ghconfig" which must have the same structure as the ".github" folder. Templates are basic [Go templates](https://golang.org/pkg/text/template/). They have access to helper functions and the informations about the repository.
+Github CI Workflow files are in many cases very similiar. Imagine a organization that has focused on delivering Node.js projects. If you need to update a single Job you have to update every
+single repository manually. Ghconfig helps you to automate such tasks. Clone your workflow directory (.github/workflows) to (.ghconfig/workflows). Use [Go templates](https://golang.org/pkg/text/template/) and sync it to all your repositories. 
 
 ## Help
+
+Ensure that your personal access token is accessible in your environment with `GITHUB_TOKEN`.
 
 ```
 ghconfig --help
