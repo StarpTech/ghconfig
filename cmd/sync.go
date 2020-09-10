@@ -8,12 +8,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/Masterminds/sprig"
 	"github.com/briandowns/spinner"
+	"github.com/cheynewallace/tabby"
 	"github.com/google/go-github/v32/github"
 	"github.com/teris-io/shortid"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -126,39 +128,61 @@ func NewSyncCmd(opts *Config) error {
 
 	s.Start()
 
+	t := tabby.New()
+	t.AddHeader("Repository", "Changes", "Url")
+
 	for _, repoFullName := range targetRepos {
 		repo := getRepoByName(repos, repoFullName)
 		intent, err := collectWorkflowFiles(opts, repo, templates)
 		if err != nil {
-			kingpin.Errorf("could update workflow files, Repo: %v, error: %v", repoFullName, err)
-		} else if len(*intent.WorkflowDrafts) > 0 {
-			url, err := createPR(opts, intent)
-			if err != nil {
-				kingpin.Errorf("could not create PR with changes: %v", err)
-				return err
-			}
-			if url != "" {
-				fmt.Printf("\n\nCheck PR for %v, url: %v\n", repo.GetFullName(), url)
+			kingpin.Errorf("could not update workflow files, Repo: %v, error: %v", repoFullName, err)
+			continue
+		}
+
+		if len(*intent.WorkflowDrafts) > 0 {
+			url := "dry-run"
+			if !opts.DryRun {
+				url, err = createPR(opts, intent)
+				if err != nil {
+					kingpin.Errorf("could not create PR with changes: %v", err)
+					return err
+				}
 			}
 
-			intents = append(intents, intent)
+			changelog := []string{}
+			for _, draft := range *intent.WorkflowDrafts {
+				changelog = append(changelog, draft.Filename)
+			}
+			t.AddLine(repo.GetFullName(), strings.Join(changelog, ","), url)
+
 		} else {
 			fmt.Printf("\nSkip: No templates found in %v.\n", workflowsDir)
 		}
+
+		intents = append(intents, intent)
 	}
 
 	s.Stop()
+	fmt.Println()
+	t.Print()
 
-	for _, wr := range intents {
-		if opts.DryRun {
+	if opts.DryRun {
+		file, err := os.Create(path.Join(pDir, "ghconfig-debug.yml"))
+		if err != nil {
+			kingpin.Errorf("could not create ghconfig-debug.yml: %v", err)
+		}
+		defer file.Close()
+
+		for _, wr := range intents {
 			for _, draft := range *wr.WorkflowDrafts {
 				y, err := yaml.Marshal(draft.Workflow)
 				if err != nil {
 					continue
 				}
-				fmt.Printf("\n// Repository: %v, Workflow: %v", wr.RepositoryName, draft.Filename)
-				fmt.Println(string(y))
-				fmt.Println("---")
+				_, err = file.Write([]byte(fmt.Sprintf("\n# Repository: %v, Workflow: %v\n%v\n---", wr.RepositoryName, draft.Filename, string(y))))
+				if err != nil {
+					kingpin.Errorf("could not write to ghconfig-debug.yml: %v", err)
+				}
 			}
 		}
 	}
