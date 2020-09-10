@@ -11,5 +11,5 @@ goreleaser --snapshot --skip-publish --rm-dist
 ### Release:
 
 ```
-goreleaser
+make release version=v1.2.3
 ```
