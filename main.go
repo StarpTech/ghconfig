@@ -24,6 +24,7 @@ single repository manually. Ghconfig helps you to automate such tasks.
 	githubToken     = app.Flag("github-token", "Your personal github access token.").OverrideDefaultFromEnvar("GITHUB_TOKEN").Short('t').Required().String()
 	worfklowCommand = app.Command("workflow", "Generates new workflows files based on the local templates and create a PR (draft) in the repository with the changes.")
 	createPR        = worfklowCommand.Flag("create-pr", "Create a new branch and PR for all changes.").Default("true").Short('p').Bool()
+	repositoryQuery = worfklowCommand.Flag("query", "Search by repository name.").Short('f').String()
 )
 
 func main() {
@@ -43,12 +44,13 @@ func main() {
 	}
 
 	cfg := &cmd.Config{
-		GithubClient: client,
-		Context:      ctx,
-		DryRun:       *dryRun,
-		BaseBranch:   *baseBranch,
-		Sid:          sid,
-		CreatePR:     *createPR,
+		GithubClient:    client,
+		Context:         ctx,
+		DryRun:          *dryRun,
+		BaseBranch:      *baseBranch,
+		Sid:             sid,
+		CreatePR:        *createPR,
+		RepositoryQuery: *repositoryQuery,
 	}
 
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {

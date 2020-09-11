@@ -58,34 +58,21 @@ type WorkflowFileDraft struct {
 }
 
 type Config struct {
-	GithubClient *github.Client
-	Context      context.Context
-	DryRun       bool
-	CreatePR     bool
-	BaseBranch   string
-	Sid          *shortid.Shortid
+	GithubClient    *github.Client
+	Context         context.Context
+	DryRun          bool
+	CreatePR        bool
+	BaseBranch      string
+	Sid             *shortid.Shortid
+	RepositoryQuery string
 }
 
 func NewSyncCmd(opts *Config) error {
-	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-	s.Suffix = " Collecting all available repositories..."
-	s.Start()
-	repos, err := fetchAllRepos(opts.Context, opts.GithubClient)
-	s.Stop()
-	if err != nil {
-		return err
-	}
-
 	pDir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	reposNames := []string{}
-
-	for _, repo := range repos {
-		reposNames = append(reposNames, *repo.FullName)
-	}
 	workflowDirAbs := path.Join(pDir, ghConfigWorkflowDir)
 	workflowFiles, err := ioutil.ReadDir(workflowDirAbs)
 	if err != nil {
@@ -113,6 +100,22 @@ func NewSyncCmd(opts *Config) error {
 			FilePath: path.Join(githubConfigWorkflowDir, workflowName),
 			FileName: workflowName,
 		})
+	}
+
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+	s.Suffix = " Collecting all available repositories..."
+	s.Start()
+
+	repos, err := fetchAllRepos(opts)
+	if err != nil {
+		return err
+	}
+	s.Stop()
+
+	reposNames := []string{}
+
+	for _, repo := range repos {
+		reposNames = append(reposNames, *repo.FullName)
 	}
 
 	targetRepoPrompt := &survey.MultiSelect{
@@ -167,8 +170,6 @@ func NewSyncCmd(opts *Config) error {
 			}
 			t.AddLine(repo.GetFullName(), strings.Join(changelog, ","), url)
 
-		} else {
-			fmt.Printf("\nSkip: No templates found in %v.\n", ghConfigWorkflowDir)
 		}
 
 		intents = append(intents, intent)
@@ -204,6 +205,7 @@ func NewSyncCmd(opts *Config) error {
 
 func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []WorkflowTemplate) (*UpdateWorkflowIntent, error) {
 	branchName := opts.BaseBranch
+	workflowDrafts := []*WorkflowFileDraft{}
 
 	if opts.CreatePR {
 		branchName = fmt.Sprintf(branchNamePattern, opts.Sid.MustGenerate())
@@ -217,7 +219,13 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 		PRBranchRef: "refs/heads/" + branchName,
 	}
 
-	_, dirContent, _, err := opts.GithubClient.Repositories.GetContents(
+	intent := UpdateWorkflowIntent{
+		WorkflowDrafts: workflowDrafts,
+		Options:        updateOptions,
+		RepositoryName: repo.GetFullName(),
+	}
+
+	_, dirContent, resp, err := opts.GithubClient.Repositories.GetContents(
 		opts.Context,
 		updateOptions.Owner,
 		updateOptions.Repo,
@@ -226,12 +234,16 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 			Ref: updateOptions.BaseRef,
 		},
 	)
+
 	if err != nil {
+		// when repo has no .github/workflow directory
+		if resp.StatusCode == 404 {
+			return &intent, nil
+		}
 		kingpin.Errorf("could not list workflow directory, %v", err)
 		return nil, err
 	}
 
-	workflowDrafts := []*WorkflowFileDraft{}
 	templateVars := map[string]interface{}{"Repo": repo}
 
 	for _, workflowTemplate := range templates {
@@ -270,14 +282,10 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 			draft.FilePath = workflowTemplate.FilePath
 		}
 
-		workflowDrafts = append(workflowDrafts, draft)
+		intent.WorkflowDrafts = append(intent.WorkflowDrafts, draft)
 	}
 
-	return &UpdateWorkflowIntent{
-		WorkflowDrafts: workflowDrafts,
-		Options:        updateOptions,
-		RepositoryName: repo.GetFullName(),
-	}, nil
+	return &intent, nil
 }
 
 func templateWorkflow(name string, workflow *Workflow, templateVars map[string]interface{}) (*bytes.Buffer, error) {
@@ -390,27 +398,37 @@ func updateRepositoryFiles(opts *Config, intent *UpdateWorkflowIntent) (*[]strin
 	return &urls, nil
 }
 
-func fetchAllRepos(ctx context.Context, client *github.Client) ([]*github.Repository, error) {
-	allRepos := []*github.Repository{}
+func fetchAllRepos(opts *Config) ([]*github.Repository, error) {
+	me, _, err := opts.GithubClient.Users.Get(opts.Context, "")
+	if err != nil {
+		return nil, err
+	}
 
-	fetch := func(page int) ([]*github.Repository, *github.Response, error) {
-		return client.Repositories.List(
-			ctx,
-			"",
-			&github.RepositoryListOptions{
-				ListOptions: github.ListOptions{PerPage: 100, Page: page},
+	allRepos := []*github.Repository{}
+	query := "user:" + *me.Login
+
+	if opts.RepositoryQuery != "" {
+		query = opts.RepositoryQuery + " in:name"
+	}
+
+	fetch := func(page int) (*github.RepositoriesSearchResult, *github.Response, error) {
+		return opts.GithubClient.Search.Repositories(
+			opts.Context,
+			query,
+			&github.SearchOptions{
+				ListOptions: github.ListOptions{PerPage: 120, Page: page},
 			},
 		)
 	}
 
-	repos, resp, err := fetch(1)
+	searchResult, resp, err := fetch(1)
 	if err != nil {
-		return allRepos, nil
+		return nil, err
 	}
-	allRepos = append(allRepos, repos...)
+	allRepos = append(allRepos, searchResult.Repositories...)
 
 	var wg sync.WaitGroup
-	var results = make(chan *[]*github.Repository, resp.LastPage-1)
+	var results = make(chan *[]*github.Repository, resp.LastPage)
 
 	for i := 2; i <= resp.LastPage; i++ {
 		wg.Add(1)
@@ -421,7 +439,7 @@ func fetchAllRepos(ctx context.Context, client *github.Client) ([]*github.Reposi
 			if err != nil {
 				fmt.Printf("error fetching repositories from github: %v", err)
 			}
-			results <- &repos
+			results <- &repos.Repositories
 		}()
 	}
 
