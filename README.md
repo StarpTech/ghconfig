@@ -85,6 +85,8 @@ can make up to 30 requests per minute.
 
 This library is being initially developed for an internal application, so features will likely be implemented in the order that they are needed by that application. Feel free to create a feature request.
 
+- [ ] Patch mode. Support `.patch.yml` extension to apply only specific changes.
+
 ## Versioning
 
 In general, ghconfig follows [semver](https://semver.org/) as closely as we
