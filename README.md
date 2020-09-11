@@ -10,7 +10,7 @@ single repository manually. Ghconfig helps you to automate such tasks.
 Ghconfig looks for a folder `.ghconfig` in the root of your repository. This directory must have the same structure as your `.github` folder. Any file in the in the folder is handled as a [Go template](https://golang.org/pkg/text/template/). Currently, only the command `workflow` is implemented. It generates new workflows files and create a PR in every selected repository:
 
 ```
-$ go run main.go workflow
+$ ghconfig workflow
 ? Please select all target repositories. StarpTech/shikaka
 
 Repository         Changes              Url
