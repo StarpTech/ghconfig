@@ -58,7 +58,7 @@ type Matrix struct {
 	Node        []string        `yaml:"node,omitempty"`
 	Os          []string        `yaml:"os,omitempty"`
 	Include     []MatrixInclude `yaml:"include,omitempty"`
-	Exclude     []MatrixExclude `yaml:"include,omitempty"`
+	Exclude     []MatrixExclude `yaml:"exclude,omitempty"`
 }
 type Strategy struct {
 	Matrix      Matrix `yaml:"matrix,omitempty"`
