@@ -2,10 +2,16 @@
 
 ghconfig is a CLI library to manage (.github) repository configurations as a fleet.
 
-Github CI Workflow files can be in organizations very similiar. If you need to update a single Job you have to update every
-single repository manually. Ghconfig helps you to automate such tasks.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/StarpTech/ghconfig/master/tweet.png">
+</p>
+
+I faced the same issue multiple times.
 
 ## How does it works? ##
+
+Github CI Workflow files can be in organizations very similiar. If you need to update a single Job you have to update every
+single repository manually. Ghconfig helps you to automate such tasks.
 
 Ghconfig looks for a folder `.ghconfig` in the root of your repository. This directory must have the same structure as your `.github` folder. Any file in the in the folder is handled as a [Go template](https://golang.org/pkg/text/template/). Currently, only the command `workflow` is implemented and therefore only `.github/workflows` are handled. We generate new workflows files and create a PR in every selected repository. Every execution creates a new PR.
 
