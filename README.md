@@ -2,14 +2,12 @@
 
 ghconfig is a CLI library to manage (.github) repository configurations as a fleet.
 
-Github CI Workflow files are in organizations very similiar. If you need to update a single Job you have to update every
-single repository manually. Ghconfig helps you to automate such tasks. Clone your workflow directory (.github/workflows) to (.ghconfig/workflows). Use [Go templates](https://golang.org/pkg/text/template/) and sync it to all your repositories. 
+Github CI Workflow files can be in organizations very similiar. If you need to update a single Job you have to update every
+single repository manually. Ghconfig helps you to automate such tasks.
 
-## Getting started ##
+## How does it works? ##
 
-Ensure that your personal access token is exported with `GITHUB_TOKEN`. 
-
-Generate workflow files based on your local templates and create a PR's per repository.
+Ghconfig looks for a folder `.ghconfig` in the root of your repository. This directory must have the same structure as your `.github` folder. Any file in the in the folder is handled as a [Go template](https://golang.org/pkg/text/template/). Currently, only the command `workflow` is implemented. It generates new workflows files and create a PR in every selected repository:
 
 ```
 $ go run main.go workflow
@@ -20,7 +18,15 @@ Repository         Changes              Url
 StarpTech/shikaka  ci.yaml,release.yml  https://github.com/StarpTech/shikaka/pull/X
 ```
 
-You can check your generated templates without creating a PR with `--dry-run`. The output is saved to `ghconfig-debug.yml`.
+## Getting started ##
+
+Ensure that your personal access token is exported with `GITHUB_TOKEN`.
+You can [download](https://github.com/starptech/ghconfig/releases) `ghconfig` from Github.
+
+
+### Dry-run
+
+You can validate your generated templates without executing remote commands. Use the flag `--dry-run`. The output is saved to `ghconfig-debug.yml`.
 
 ```
 ghconfig workflow --dry-run
@@ -38,7 +44,7 @@ env:
     B: $(( .Repo.GetFullName ))
 ```
 
-### Help ###
+## Help ##
 
 List all available commands:
 ```
