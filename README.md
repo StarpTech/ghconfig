@@ -1,12 +1,12 @@
-# Github config CLI
+<p align="center">
+  <img alt="ghconfig Logo" src="https://raw.githubusercontent.com/StarpTech/ghconfig/master/logo.png" />
+  <h3 align="center">GitHub Config</h3>
+  <p align="center">Manage (.github) repository configurations as a fleet.</p>
+</p>
+
+---
 
 `ghconfig` is a CLI library to manage (.github) repository configurations as a fleet.
-
-<p align="center">
-  <a href="https://twitter.com/bcomnes/status/1303003812249174018">
-  <img src="https://raw.githubusercontent.com/StarpTech/ghconfig/master/tweet.png">
-  </a>
-</p>
 
 Github CI Workflow files can be in organizations very similiar. If you need to update a single Job you have to update every
 single repository manually. Ghconfig helps you to automate such tasks.
@@ -90,3 +90,7 @@ understood.
 
 This library is distributed under the MIT-style license found in the [LICENSE](./LICENSE)
 file.
+
+## Credits
+
+The logo is provided by [icons8.de](https://icons8.de)
