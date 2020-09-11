@@ -15,7 +15,21 @@ I faced the same issue multiple times.
 Github CI Workflow files can be in organizations very similiar. If you need to update a single Job you have to update every
 single repository manually. Ghconfig helps you to automate such tasks.
 
-Ghconfig looks for a folder `.ghconfig` in the root of your repository. This directory must have the same structure as your `.github` folder. Any file in the in the folder is handled as a [Go template](https://golang.org/pkg/text/template/). Currently, only the command `workflow` is implemented and therefore only `.github/workflows` are handled. We generate new workflows files and create a PR in every selected repository. Every execution creates a new PR.
+Ghconfig looks for a folder `.ghconfig` in the root of your repository.
+
+```
+.
+├── .github
+│   └── workflows
+│       ├── test.yaml
+│       └── test2.yml
+├── .ghconfig
+│   └── workflows
+│       ├── test.yaml
+│       └── test2.yml
+```
+
+This directory must have the same structure as your `.github` folder. Any file in the in the folder is handled as a [Go template](https://golang.org/pkg/text/template/). Currently, only the command `workflow` is implemented and therefore only `.github/workflows` are respected. We generate new workflows files and create a PR in every selected repository. Every execution creates a new PR.
 
 ```
 $ ghconfig workflow
