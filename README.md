@@ -3,12 +3,14 @@
 ghconfig is a CLI library to manage (.github) repository configurations as a fleet.
 
 <p align="center">
+  <a href="https://twitter.com/bcomnes/status/1303003812249174018">
   <img src="https://raw.githubusercontent.com/StarpTech/ghconfig/master/tweet.png">
+  </a>
 </p>
 
 I faced the same issue multiple times.
 
-## How does it works? ##
+## How does it works?
 
 Github CI Workflow files can be in organizations very similiar. If you need to update a single Job you have to update every
 single repository manually. Ghconfig helps you to automate such tasks.
@@ -24,11 +26,10 @@ Repository         Changes              Url
 StarpTech/shikaka  ci.yaml,release.yml  https://github.com/StarpTech/shikaka/pull/X
 ```
 
-## Getting started ##
+## Getting started
 
 Ensure that your personal access token is exported with `GITHUB_TOKEN`.
 You can [download](https://github.com/starptech/ghconfig/releases) `ghconfig` from Github.
-
 
 ### Dry-run
 
@@ -50,14 +51,15 @@ env:
     B: $(( .Repo.GetFullName ))
 ```
 
-## Help ##
+## Help
 
 List all available commands:
+
 ```
 ghconfig --help
 ```
 
-## Rate Limiting ##
+## Rate Limiting
 
 GitHub imposes a rate limit on all API clients. Unauthenticated clients are
 limited to 60 requests per hour, while authenticated clients can make up to
@@ -65,18 +67,18 @@ limited to 60 requests per hour, while authenticated clients can make up to
 clients are limited to 10 requests per minute, while authenticated clients
 can make up to 30 requests per minute.
 
-## Roadmap ##
+## Roadmap
 
 This library is being initially developed for an internal application, so features will likely be implemented in the order that they are needed by that application. Feel free to create a feature request.
 
-## Versioning ##
+## Versioning
 
 In general, ghconfig follows [semver](https://semver.org/) as closely as we
 can for tagging releases of the package. For self-contained libraries, the
 application of semantic versioning is relatively straightforward and generally
 understood.
 
-## License ##
+## License
 
 This library is distributed under the MIT-style license found in the [LICENSE](./LICENSE)
 file.
