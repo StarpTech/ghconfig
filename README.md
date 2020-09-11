@@ -21,12 +21,12 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository.
 .
 ├── .github
 │   └── workflows
-│       ├── test.yaml
-│       └── test2.yml
+│       ├── ci.yaml
+│       └── release.yml
 ├── .ghconfig
 │   └── workflows
-│       ├── test.yaml
-│       └── test2.yml
+│       ├── ci.yaml
+│       └── release.yml
 ```
 
 This directory must have the same structure as your `.github` folder. Any file in the in the folder is handled as a [Go template](https://golang.org/pkg/text/template/). Currently, only the command `workflow` is implemented and therefore only `.github/workflows` are respected. We generate new workflows files and create a PR in every selected repository. Every execution creates a new PR.
