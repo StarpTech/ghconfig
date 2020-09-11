@@ -23,7 +23,7 @@ single repository manually. Ghconfig helps you to automate such tasks.
 	baseBranch      = app.Flag("base-branch", "The base branch.").Default("master").Short('b').String()
 	githubToken     = app.Flag("github-token", "Your personal github access token.").OverrideDefaultFromEnvar("GITHUB_TOKEN").Short('t').Required().String()
 	worfklowCommand = app.Command("workflow", "Generates new workflows files based on the local templates and create a PR (draft) in the repository with the changes.")
-	createPR        = worfklowCommand.Flag("create-pr", "Create a new PR for all changes.").Default("true").Short('p').Bool()
+	createPR        = worfklowCommand.Flag("create-pr", "Create a new branch and PR for all changes.").Default("true").Short('p').Bool()
 )
 
 func main() {
