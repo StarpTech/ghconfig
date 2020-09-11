@@ -26,7 +26,7 @@ single repository manually. Ghconfig helps you to automate such tasks.
 )
 
 func main() {
-	app.Version("0.0.1")
+	app.Version("0.0.3")
 	app.Parse(os.Args[1:])
 
 	ctx := context.Background()
