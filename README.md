@@ -1,16 +1,12 @@
-# ghconfig
+# Github config CLI
 
-ghconfig is a CLI library to manage (.github) repository configurations as a fleet.
+`ghconfig` is a CLI library to manage (.github) repository configurations as a fleet.
 
 <p align="center">
   <a href="https://twitter.com/bcomnes/status/1303003812249174018">
   <img src="https://raw.githubusercontent.com/StarpTech/ghconfig/master/tweet.png">
   </a>
 </p>
-
-I faced the same issue multiple times.
-
-## How does it works?
 
 Github CI Workflow files can be in organizations very similiar. If you need to update a single Job you have to update every
 single repository manually. Ghconfig helps you to automate such tasks.
@@ -40,18 +36,22 @@ Repository         Changes              Url
 StarpTech/shikaka  ci.yaml,release.yml  https://github.com/StarpTech/shikaka/pull/X
 ```
 
-## Getting started
+## We want your feedback
+
+We'd love to hear your feedback about ghconfig. If you spot bugs or have features that you'd really like to see in ghconfig, please check out the [contributing page](./CONTRIBUTING.md).
+
+## Usage
+
+- `ghconfig workflow`
+- `ghconfig workflow --no-create-pr`
+- `ghconfig workflow --query=MyOrganisation`
+- `ghconfig workflow --base-branch=master`
+- `ghconfig workflow --dry-run`
+
+## Installation
 
 Ensure that your personal access token is exported with `GITHUB_TOKEN`.
 You can [download](https://github.com/starptech/ghconfig/releases) `ghconfig` from Github.
-
-### Dry-run
-
-You can validate your generated templates without updating your repository. Use the flag `--dry-run`. The output is saved to `ghconfig-debug.yml`.
-
-```
-ghconfig workflow --dry-run
-```
 
 ## Templating
 
@@ -63,14 +63,6 @@ Example:
 env:
     A: $(( uuidv4 ))
     B: $(( .Repo.GetFullName ))
-```
-
-## Help
-
-List all available commands:
-
-```
-ghconfig --help
 ```
 
 ## Rate Limiting
