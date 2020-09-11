@@ -7,7 +7,7 @@ single repository manually. Ghconfig helps you to automate such tasks.
 
 ## How does it works? ##
 
-Ghconfig looks for a folder `.ghconfig` in the root of your repository. This directory must have the same structure as your `.github` folder. Any file in the in the folder is handled as a [Go template](https://golang.org/pkg/text/template/). Currently, only the command `workflow` is implemented. It generates new workflows files and create a PR in every selected repository:
+Ghconfig looks for a folder `.ghconfig` in the root of your repository. This directory must have the same structure as your `.github` folder. Any file in the in the folder is handled as a [Go template](https://golang.org/pkg/text/template/). Currently, only the command `workflow` is implemented and therefore only `.github/workflows` are handled. We generate new workflows files and create a PR in every selected repository. Every execution creates a new PR.
 
 ```
 $ ghconfig workflow

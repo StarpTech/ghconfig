@@ -44,7 +44,7 @@ type UpdateWorkflowIntentOptions struct {
 
 type UpdateWorkflowIntent struct {
 	RepositoryName string
-	WorkflowDrafts *[]WorkflowFileDraft
+	WorkflowDrafts []*WorkflowFileDraft
 	Options        UpdateWorkflowIntentOptions
 }
 
@@ -139,7 +139,7 @@ func NewSyncCmd(opts *Config) error {
 			continue
 		}
 
-		if len(*intent.WorkflowDrafts) > 0 {
+		if len(intent.WorkflowDrafts) > 0 {
 			url := "dry-run"
 			if !opts.DryRun {
 				url, err = createPR(opts, intent)
@@ -150,7 +150,7 @@ func NewSyncCmd(opts *Config) error {
 			}
 
 			changelog := []string{}
-			for _, draft := range *intent.WorkflowDrafts {
+			for _, draft := range intent.WorkflowDrafts {
 				changelog = append(changelog, draft.Filename)
 			}
 			t.AddLine(repo.GetFullName(), strings.Join(changelog, ","), url)
@@ -174,7 +174,7 @@ func NewSyncCmd(opts *Config) error {
 		defer file.Close()
 
 		for _, wr := range intents {
-			for _, draft := range *wr.WorkflowDrafts {
+			for _, draft := range wr.WorkflowDrafts {
 				y, err := yaml.Marshal(draft.Workflow)
 				if err != nil {
 					continue
@@ -214,7 +214,7 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 		return nil, err
 	}
 
-	workflowDrafts := []WorkflowFileDraft{}
+	workflowDrafts := []*WorkflowFileDraft{}
 	templateVars := map[string]interface{}{"Repo": repo}
 
 	for _, workflowTemplate := range templates {
@@ -253,11 +253,11 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 			draft.FilePath = workflowTemplate.FilePath
 		}
 
-		workflowDrafts = append(workflowDrafts, *draft)
+		workflowDrafts = append(workflowDrafts, draft)
 	}
 
 	return &UpdateWorkflowIntent{
-		WorkflowDrafts: &workflowDrafts,
+		WorkflowDrafts: workflowDrafts,
 		Options:        updateOptions,
 		RepositoryName: repo.GetFullName(),
 	}, nil
@@ -320,7 +320,7 @@ func createPR(opts *Config, intent *UpdateWorkflowIntent) (string, error) {
 		return "", fmt.Errorf("could not find a ref on base branch")
 	}
 
-	for _, draft := range *intent.WorkflowDrafts {
+	for _, draft := range intent.WorkflowDrafts {
 		// commit message
 		commitMsg := "Update workflow files by ghconfig"
 
