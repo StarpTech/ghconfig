@@ -94,6 +94,29 @@ type Container struct {
 	Volumes ServiceVolumes `yaml:"volumes,omitempty"`
 	Options string         `yaml:"options,omitempty"`
 }
+
+type ContainerMarshaler struct {
+	Image string `yaml:"image,omitempty"`
+}
+
+func (c *Container) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var container ContainerMarshaler
+	err := unmarshal(&container)
+	if err != nil {
+		var imageName string
+		err := unmarshal(&imageName)
+		if err != nil {
+			return err
+		}
+		*c = Container{Image: imageName}
+	} else {
+		*c = Container{
+			Image: container.Image,
+		}
+	}
+	return nil
+}
+
 type Service struct {
 	Image   string           `yaml:"image,omitempty"`
 	Env     ServiceEnv       `yaml:"env,omitempty"`
@@ -111,9 +134,27 @@ type Job struct {
 	Defaults        Defaults           `yaml:"defaults,omitempty"`
 	Outputs         Outputs            `yaml:"outputs,omitempty"`
 	Steps           []Step             `yaml:"steps,omitempty"`
-	Needs           []Step             `yaml:"needs,omitempty"`     // string or array
+	Needs           StringArray        `yaml:"needs,omitempty"`     // string or array
 	Container       Container          `yaml:"container,omitempty"` // can be string if only an image name is passed
 	Services        map[string]Service `yaml:"services,omitempty"`
+}
+
+type StringArray []string
+
+func (a *StringArray) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var multi []string
+	err := unmarshal(&multi)
+	if err != nil {
+		var single string
+		err := unmarshal(&single)
+		if err != nil {
+			return err
+		}
+		*a = []string{single}
+	} else {
+		*a = multi
+	}
+	return nil
 }
 
 type Jobs = map[string]Job

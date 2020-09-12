@@ -14,6 +14,8 @@ env:
     CI: true
 
 jobs:
+  foo:
+    container: nginx
   build:
     runs-on: ${{ matrix.os }}
     strategy:

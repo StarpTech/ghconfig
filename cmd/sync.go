@@ -96,6 +96,7 @@ func NewSyncCmd(opts *Config) error {
 		t := workflow.Workflow{}
 		err = yaml.Unmarshal(bytes, &t)
 		if err != nil {
+			kingpin.Errorf("workflow file %v can't be parsed as workflow.", filePath)
 			return err
 		}
 		templates = append(templates, WorkflowTemplate{
