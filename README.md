@@ -9,7 +9,12 @@
 `ghconfig` is a CLI library to manage (.github) repository configurations as a fleet.
 
 Github CI Workflow files can be in organizations very similiar. If you need to update a single Job you have to update every
-single repository manually. Ghconfig helps you to automate such tasks.
+single repository manually. Ghconfig helps you to automate such tasks. You can work in two modes.
+
+- Replace an entire workflow file with the new generated template.
+- Apply a [ RFC6902 JSON patches](http://tools.ietf.org/html/rfc6902).
+
+By default a Pull-Request is created for all changes on a repository.
 
 Ghconfig looks for a folder `.ghconfig` in the root of your repository.
 
@@ -18,14 +23,15 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository.
 ├── .github
 │   └── workflows
 │       ├── ci.yaml
-│       └── release.yml
+│       └── release.json
 ├── .ghconfig
 │   └── workflows
 │       ├── ci.yaml
-│       └── release.yml
+|       |-- release.yml
+│       └── release.patch.json
 ```
 
-This directory must have the same structure as your `.github` folder. Any file in the in the folder is handled as a [Go template](https://golang.org/pkg/text/template/). Currently, only the command `workflow` is implemented and therefore only `.github/workflows` are respected. We generate new workflows files and create a PR in every selected repository. Every execution creates a new PR unless other specified with `--no-create-pr` the changes are commited directly on the base branch.
+This directory must have the same structure as your `.github` folder. Any `yaml` file is handled as a [Go template](https://golang.org/pkg/text/template/).
 
 ## Example:
 
@@ -40,7 +46,7 @@ StarpTech/shikaka  ci.yaml,release.yml  https://github.com/StarpTech/shikaka/pul
 
 ## We want your feedback
 
-We'd love to hear your feedback about ghconfig. If you spot bugs or have features that you'd really like to see in ghconfig, please check out the [contributing page](./CONTRIBUTING.md).
+We'd love to hear your feedback about ghconfig. If you spot bugs or have features that you'd really like to see in ghconfig, please check out the [contributing page](./.github/CONTRIBUTING.md).
 
 ## Usage
 
@@ -48,7 +54,7 @@ We'd love to hear your feedback about ghconfig. If you spot bugs or have feature
 - `ghconfig workflow --no-create-pr`
 - `ghconfig workflow --query=MyOrganisation`
 - `ghconfig workflow --base-branch=master`
-- `ghconfig workflow --root-dir=workflow-dir`
+- `ghconfig workflow --root-dir=different-workflow-dir`
 - `ghconfig workflow --dry-run`
 
 ## Installation
@@ -80,7 +86,10 @@ can make up to 30 requests per minute.
 
 This library is being initially developed for an internal application, so features will likely be implemented in the order that they are needed by that application. Feel free to create a feature request.
 
-- [ ] Patch mode. Support `.patch.yml` extension to apply only specific changes.
+- [X] Workflows
+- [X] JSON-Patch for Workflows
+- [ ] Test suite
+- [ ] Manage Github community health files
 
 ## Versioning
 
@@ -97,3 +106,8 @@ file.
 ## Credits
 
 The logo is provided by [icons8.de](https://icons8.de)
+
+## References
+
+- [About default community health files](https://docs.github.com/en/github/building-a-strong-community/creating-a-default-community-health-file)
+- [Dependabot](https://github.blog/2020-06-01-keep-all-your-packages-up-to-date-with-dependabot/)
