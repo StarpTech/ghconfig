@@ -368,7 +368,7 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 				t := workflow.Workflow{}
 				err = yaml.Unmarshal(data, &t)
 				if err != nil {
-					kingpin.Errorf("could not unmarshal patched workflow, %v", err)
+					kingpin.Errorf("could not unmarshal workflow, %v", err)
 					continue
 				}
 
