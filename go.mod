@@ -12,6 +12,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
 	github.com/briandowns/spinner v1.11.1
 	github.com/cheynewallace/tabby v1.1.0
+	github.com/davecgh/go-spew v1.1.1
 	github.com/evanphx/json-patch/v5 v5.1.0
 	github.com/google/go-github/v32 v32.1.0
 	github.com/google/uuid v1.1.2 // indirect

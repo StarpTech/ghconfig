@@ -25,12 +25,24 @@ type WorkflowTemplate struct {
 	FilePath string
 }
 
-type WorkflowPatch struct {
-	Patch    jsonpatch.Patch
-	FileName string
+type FilePatch struct {
+	PatchData PatchData
+	Patch     jsonpatch.Patch
 }
 
-type UpdateWorkflowIntentOptions struct {
+type PatchData struct {
+	FileName string               `yaml:"fileName,omitempty" json:"fileName,omitempty"`
+	Patch    []JsonPatchOperation `yaml:"patch,omitempty" json:"patch,omitempty"`
+}
+
+type JsonPatchOperation struct {
+	FileName string `yaml:"name,omitempty" json:"name,omitempty"`
+	Op       string `yaml:"op,omitempty" json:"op,omitempty"`
+	Path     string `yaml:"path,omitempty" json:"path,omitempty"`
+	Value    string `yaml:"value,omitempty" json:"value,omitempty"`
+}
+
+type UpdateIntentOptions struct {
 	Branch      string
 	PRBranchRef string
 	BaseRef     string
@@ -41,7 +53,7 @@ type UpdateWorkflowIntentOptions struct {
 type UpdateWorkflowIntent struct {
 	RepositoryName string
 	WorkflowDrafts []*WorkflowUpdateDraft
-	Options        UpdateWorkflowIntentOptions
+	Options        UpdateIntentOptions
 }
 
 type WorkflowUpdateDraft struct {

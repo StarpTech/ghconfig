@@ -11,8 +11,8 @@
 Github CI Workflow files can be in organizations very similiar. If you need to update a single Job you have to update every
 single repository manually. Ghconfig helps you to automate such tasks. You can work in two modes.
 
-- Replace an entire workflow file with the new generated file.
-- Apply a [RFC6902 JSON patches](http://tools.ietf.org/html/rfc6902) on an existing workflow file.
+- Create a new workflow file based on your templates.
+- Apply a [RFC6902 JSON patche](http://tools.ietf.org/html/rfc6902) on an existing workflow file.
 
 By default a Pull-Request is created for all changes on a repository.
 
@@ -25,10 +25,16 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository.
 │       ├── ci.yaml
 │       └── release.json
 ├── .ghconfig
-│   └── workflows
-│       ├── ci.yaml
-|       |-- release.yml
-│       └── release.patch.json
+│   ├── workflows
+│   │   ├── patches
+│   │   │   └── nodejs.yaml
+│   │   ├── ci.yaml
+│   │   └── release.yaml
+│   ├── CODE_OF_CONDUCT.md
+│   ├── dependabot.yml
+│   ├── FUNDING.yml
+│   ├── SECURITY.md
+│   └── SUPPORT.md
 ```
 
 This directory must have the same structure as your `.github` folder. Any `yaml` file is handled as a [Go template](https://golang.org/pkg/text/template/).

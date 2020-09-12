@@ -7,24 +7,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/briandowns/spinner"
 	"github.com/cheynewallace/tabby"
-	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/google/go-github/v32/github"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
-)
-
-var (
-	defaultWorkflowDir  = "workflows"
-	branchNamePattern   = "ghconfig/workflows/%s"
-	ghConfigWorkflowDir = ".ghconfig/%s"
-	githubConfigDir     = ".github"
 )
 
 func NewSyncCmd(opts *internal.Config) error {
@@ -32,66 +22,16 @@ func NewSyncCmd(opts *internal.Config) error {
 	if err != nil {
 		return err
 	}
-
-	workflowDirAbs := path.Join(pDir, fmt.Sprintf(ghConfigWorkflowDir, opts.WorkflowRoot))
-	workflowFiles, err := ioutil.ReadDir(workflowDirAbs)
+	workflowDirAbs := path.Join(pDir, fmt.Sprintf(internal.GhConfigWorkflowDir, opts.WorkflowRoot))
+	templates, err := internal.FindWorkflows(workflowDirAbs)
 	if err != nil {
 		return err
 	}
-	templates := []internal.WorkflowTemplate{}
-	patches := []internal.WorkflowPatch{}
 
-	for _, workflowFile := range workflowFiles {
-		if workflowFile.IsDir() {
-			continue
-		}
-
-		// check for patch
-		if strings.HasSuffix(workflowFile.Name(), ".patch.json") {
-			// without extension
-			workflowName := strings.TrimSuffix(workflowFile.Name(), ".patch.json")
-			filePath := path.Join(workflowDirAbs, workflowFile.Name())
-			bytes, err := ioutil.ReadFile(filePath)
-			if err != nil {
-				kingpin.Errorf("could not read workflow patch file %v.", filePath)
-				continue
-			}
-			if len(bytes) == 0 {
-				continue
-			}
-			patch, err := jsonpatch.DecodePatch(bytes)
-			if err != nil {
-				kingpin.Errorf("invalid workflow patch file %v.", filePath)
-				continue
-			}
-			patches = append(patches, internal.WorkflowPatch{
-				FileName: workflowName,
-				Patch:    patch,
-			})
-		} else {
-			workflowName := workflowFile.Name()
-			filePath := path.Join(workflowDirAbs, workflowName)
-			bytes, err := ioutil.ReadFile(filePath)
-			if err != nil {
-				kingpin.Errorf("could not read workflow file %v.", filePath)
-				continue
-			}
-			if len(bytes) == 0 {
-				continue
-			}
-			t := internal.Workflow{}
-			err = yaml.Unmarshal(bytes, &t)
-			if err != nil {
-				kingpin.Errorf("workflow file %v can't be parsed as workflow.", filePath)
-				continue
-			}
-			templates = append(templates, internal.WorkflowTemplate{
-				Workflow: &t,
-				// restore to .github/workflows structure to update the correct file in the repo
-				FilePath: path.Join(githubConfigDir, defaultWorkflowDir, workflowName),
-				FileName: workflowName,
-			})
-		}
+	workflowPatchesDirAbs := path.Join(pDir, fmt.Sprintf(internal.GhConfigWorkflowDir, path.Join(opts.WorkflowRoot, "patches")))
+	patches, err := internal.FindPatches(workflowPatchesDirAbs)
+	if err != nil {
+		return err
 	}
 
 	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
@@ -206,14 +146,14 @@ func NewSyncCmd(opts *internal.Config) error {
 	return nil
 }
 
-func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templates []internal.WorkflowTemplate, patches []internal.WorkflowPatch) (*internal.UpdateWorkflowIntent, error) {
+func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templates []*internal.WorkflowTemplate, patches []*internal.FilePatch) (*internal.UpdateWorkflowIntent, error) {
 	branchName := opts.BaseBranch
 
 	if opts.CreatePR {
-		branchName = fmt.Sprintf(branchNamePattern, opts.Sid.MustGenerate())
+		branchName = fmt.Sprintf(internal.BranchNamePattern, opts.Sid.MustGenerate())
 	}
 
-	updateOptions := internal.UpdateWorkflowIntentOptions{
+	updateOptions := internal.UpdateIntentOptions{
 		Owner:       *repo.GetOwner().Login,
 		Repo:        repo.GetName(),
 		BaseRef:     opts.BaseBranch,
@@ -222,7 +162,6 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 	}
 
 	intent := internal.UpdateWorkflowIntent{
-		WorkflowDrafts: []*internal.WorkflowUpdateDraft{},
 		Options:        updateOptions,
 		RepositoryName: repo.GetFullName(),
 	}
@@ -267,17 +206,7 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 		}
 
 		for _, content := range dirContent {
-			// match based on filename without extension, workflow name is not unique
-			// since we work only with yaml files we can omit the extension
-			var remoteFileName, localName string = strings.TrimSuffix(
-				content.GetName(),
-				filepath.Ext(content.GetName()),
-			), strings.TrimSuffix(
-				workflowTemplate.FileName,
-				filepath.Ext(workflowTemplate.FileName),
-			)
-
-			if remoteFileName == localName {
+			if content.GetName() == workflowTemplate.FileName {
 				draft = &internal.WorkflowUpdateDraft{}
 				draft.Filename = content.GetName()
 				draft.DisplayName = draft.Filename
@@ -299,20 +228,10 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 		intent.WorkflowDrafts = append(intent.WorkflowDrafts, draft)
 	}
 
-	for _, workflowPatch := range patches {
+	for _, patch := range patches {
 		var draft *internal.WorkflowUpdateDraft
 		for _, content := range dirContent {
-			// match based on filename without extension, workflow name is not unique
-			// since we work only with yaml files we can omit the extension
-			var remoteFileName, localName string = strings.TrimSuffix(
-				content.GetName(),
-				filepath.Ext(content.GetName()),
-			), strings.TrimSuffix(
-				workflowPatch.FileName,
-				filepath.Ext(workflowPatch.FileName),
-			)
-
-			if remoteFileName == localName {
+			if content.GetName() == patch.PatchData.FileName {
 				r, err := opts.GithubClient.Repositories.DownloadContents(
 					opts.Context,
 					updateOptions.Owner,
@@ -345,7 +264,7 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 					continue
 				}
 
-				data, err = workflowPatch.Patch.Apply(j)
+				data, err = patch.Patch.Apply(j)
 				if err != nil {
 					kingpin.Errorf("could not apply patch, %v", err)
 					continue

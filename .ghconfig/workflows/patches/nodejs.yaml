@@ -1,0 +1,8 @@
+fileName: nodejs.yml
+patch:
+  - op: replace
+    path: "/name"
+    value: Jane
+  - op: add
+    path: "/jobs/build/strategy/matrix/node-version/0"
+    value: 11.x

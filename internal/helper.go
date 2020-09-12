@@ -1,11 +1,115 @@
 package internal
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"path"
+	"path/filepath"
 	"sync"
 
+	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/google/go-github/v32/github"
+	"gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/yaml.v2"
 )
+
+var (
+	DefaultWorkflowDir  = "workflows"
+	BranchNamePattern   = "ghconfig/workflows/%s"
+	GhConfigWorkflowDir = ".ghconfig/%s"
+	GithubConfigDir     = ".github"
+)
+
+func FindWorkflows(dirPath string) ([]*WorkflowTemplate, error) {
+	templates := []*WorkflowTemplate{}
+	files, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		ext := filepath.Ext(file.Name())
+		if ext != ".yml" && ext != ".yaml" {
+			continue
+		}
+		workflowName := file.Name()
+		filePath := path.Join(dirPath, workflowName)
+		bytes, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			kingpin.Errorf("could not read workflow file %v.", filePath)
+			continue
+		}
+		if len(bytes) == 0 {
+			continue
+		}
+		t := Workflow{}
+		err = yaml.Unmarshal(bytes, &t)
+		if err != nil {
+			kingpin.Errorf("workflow file %v can't be parsed as workflow.", filePath)
+			continue
+		}
+		templates = append(templates, &WorkflowTemplate{
+			Workflow: &t,
+			// restore to .github/workflows structure to update the correct file in the repo
+			FilePath: path.Join(GithubConfigDir, DefaultWorkflowDir, workflowName),
+			FileName: workflowName,
+		})
+	}
+	return templates, nil
+}
+
+func FindPatches(dirPath string) ([]*FilePatch, error) {
+	patches := []*FilePatch{}
+	files, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		ext := filepath.Ext(file.Name())
+		if ext != ".yml" && ext != ".yaml" {
+			continue
+		}
+		filePath := path.Join(dirPath, file.Name())
+		bytes, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			kingpin.Errorf("could not read patch file %v.", filePath)
+			continue
+		}
+		if len(bytes) == 0 {
+			kingpin.Errorf("file %v was empty.", filePath)
+			continue
+		}
+		patchData := PatchData{}
+		err = yaml.Unmarshal(bytes, &patchData)
+		if err != nil {
+			kingpin.Errorf("file %v can't be parsed as patch file.", filePath)
+			continue
+		}
+		patchJSONData, err := json.Marshal(patchData.Patch)
+		if err != nil {
+			kingpin.Errorf("could marshal patch to json %v.", filePath)
+			continue
+		}
+		patch, err := jsonpatch.DecodePatch(patchJSONData)
+		if err != nil {
+			kingpin.Errorf("invalid patch file %v.", filePath)
+			continue
+		}
+		patches = append(patches, &FilePatch{
+			PatchData: patchData,
+			Patch:     patch,
+		})
+
+	}
+	return patches, nil
+}
 
 func CreatePR(opts *Config, intent *UpdateWorkflowIntent) (string, error) {
 	// get ref to branch from
