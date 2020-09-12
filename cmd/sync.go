@@ -174,7 +174,7 @@ func NewSyncCmd(opts *Config) error {
 	s.Start()
 
 	t := tabby.New()
-	t.AddHeader("Repository", "Changes", "Url")
+	t.AddHeader("Repository", "Files", "Url")
 
 	for _, repoFullName := range targetRepos {
 		repo := getRepoByName(repos, repoFullName)

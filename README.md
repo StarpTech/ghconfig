@@ -39,9 +39,9 @@ This directory must have the same structure as your `.github` folder. Any `yaml`
 $ ghconfig workflow
 ? Please select all target repositories. StarpTech/shikaka
 
-Repository         Changes              Url
-----------         -------              ---
-StarpTech/shikaka  ci.yaml,release.yml  https://github.com/StarpTech/shikaka/pull/X
+Repository         Files                            Url
+----------         -------                          ---
+StarpTech/shikaka  test.yaml,test2.yaml,nodejs.yml  https://github.com/StarpTech/shikaka/pull/16
 ```
 
 ## We want your feedback
