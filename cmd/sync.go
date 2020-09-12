@@ -50,7 +50,6 @@ type UpdateWorkflowIntentOptions struct {
 	BaseRef     string
 	Owner       string
 	Repo        string
-	PRExists    bool
 }
 
 type UpdateWorkflowIntent struct {
@@ -65,6 +64,8 @@ type WorkflowUpdateDraft struct {
 	Filename    string
 	SHA         string
 	FilePath    string
+	DisplayName string
+	Url         string
 }
 
 type Config struct {
@@ -183,29 +184,40 @@ func NewSyncCmd(opts *Config) error {
 		}
 
 		if len(intent.WorkflowDrafts) > 0 {
-			url := ""
+			pullRequestURL := ""
 			if !opts.DryRun {
 				if opts.CreatePR {
-					url, err = createPR(opts, intent)
+					pullRequestURL, err = createPR(opts, intent)
 					if err != nil {
 						kingpin.Errorf("could not create PR with changes: %v", err)
 						continue
 					}
 				} else {
-					urls, err := updateRepositoryFiles(opts, intent)
+					err := updateRepositoryFiles(opts, intent)
 					if err != nil {
 						kingpin.Errorf("could not update files only on remote: %v", err)
 						continue
 					}
-					url = strings.Join(*urls, ",")
 				}
 			}
 
-			changelog := []string{}
-			for _, draft := range intent.WorkflowDrafts {
-				changelog = append(changelog, draft.Filename)
+			for i, draft := range intent.WorkflowDrafts {
+				if i == 0 {
+					url := ""
+					if pullRequestURL != "" {
+						url = pullRequestURL
+					} else {
+						url = draft.Url
+					}
+					t.AddLine(repo.GetFullName(), draft.DisplayName, url)
+				} else {
+					url := ""
+					if pullRequestURL == "" {
+						url = draft.Url
+					}
+					t.AddLine("", draft.DisplayName, url)
+				}
 			}
-			t.AddLine(repo.GetFullName(), strings.Join(changelog, ","), url)
 
 		}
 
@@ -242,7 +254,6 @@ func NewSyncCmd(opts *Config) error {
 
 func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []WorkflowTemplate, patches []WorkflowPatch) (*UpdateWorkflowIntent, error) {
 	branchName := opts.BaseBranch
-	workflowDrafts := []*WorkflowUpdateDraft{}
 
 	if opts.CreatePR {
 		branchName = fmt.Sprintf(branchNamePattern, opts.Sid.MustGenerate())
@@ -257,7 +268,7 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 	}
 
 	intent := UpdateWorkflowIntent{
-		WorkflowDrafts: workflowDrafts,
+		WorkflowDrafts: []*WorkflowUpdateDraft{},
 		Options:        updateOptions,
 		RepositoryName: repo.GetFullName(),
 	}
@@ -315,6 +326,7 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 			if remoteFileName == localName {
 				draft = &WorkflowUpdateDraft{}
 				draft.Filename = content.GetName()
+				draft.DisplayName = draft.Filename
 				draft.Workflow = &proceedTemplate
 				draft.FileContent = &fileContent
 				draft.FilePath = content.GetPath()
@@ -324,6 +336,7 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 		if draft == nil {
 			draft = &WorkflowUpdateDraft{}
 			draft.Filename = workflowTemplate.FileName
+			draft.DisplayName = workflowTemplate.FileName
 			draft.Workflow = &proceedTemplate
 			draft.FileContent = &fileContent
 			draft.FilePath = workflowTemplate.FilePath
@@ -397,7 +410,8 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 				}
 
 				draft = &WorkflowUpdateDraft{}
-				draft.Filename = content.GetName()
+				draft.Filename = content.GetName() + " (patch)"
+				draft.DisplayName = content.GetName() + " (patch)"
 				draft.Workflow = &t
 				draft.FileContent = &j
 				draft.FilePath = content.GetPath()
@@ -468,7 +482,7 @@ func createPR(opts *Config, intent *UpdateWorkflowIntent) (string, error) {
 		return "", fmt.Errorf("could not find a ref on the base branch")
 	}
 
-	_, err = updateRepositoryFiles(opts, intent)
+	err = updateRepositoryFiles(opts, intent)
 	if err != nil {
 		return "", err
 	}
@@ -495,8 +509,7 @@ func createPR(opts *Config, intent *UpdateWorkflowIntent) (string, error) {
 	return pr.GetHTMLURL(), nil
 }
 
-func updateRepositoryFiles(opts *Config, intent *UpdateWorkflowIntent) (*[]string, error) {
-	urls := []string{}
+func updateRepositoryFiles(opts *Config, intent *UpdateWorkflowIntent) error {
 	for _, draft := range intent.WorkflowDrafts {
 		// commit message
 		commitMsg := "Update workflow files by ghconfig"
@@ -514,11 +527,11 @@ func updateRepositoryFiles(opts *Config, intent *UpdateWorkflowIntent) (*[]strin
 			},
 		)
 		if err != nil {
-			return nil, err
+			return nil
 		}
-		urls = append(urls, rr.GetHTMLURL())
+		draft.Url = rr.GetHTMLURL()
 	}
-	return &urls, nil
+	return nil
 }
 
 func fetchAllRepos(opts *Config) ([]*github.Repository, error) {
