@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="ghconfig Logo" src="https://raw.githubusercontent.com/StarpTech/ghconfig/master/logo.png" />
+  <img alt="ghconfig Logo" src="https://raw.githubusercontent.com/StarpTech/ghconfig/master/docs/logo.png" />
   <h3 align="center">GitHub Config</h3>
   <p align="center">Manage (.github) repository configurations as a fleet.</p>
 </p>

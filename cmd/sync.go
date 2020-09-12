@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"ghconfig/internal/workflow"
 	"html/template"
 	"io/ioutil"
 	"os"
@@ -23,13 +24,14 @@ import (
 )
 
 var (
-	branchNamePattern       = "ghconfig/workflows/%s"
-	ghConfigWorkflowDir     = ".ghconfig/workflows"
-	githubConfigWorkflowDir = ".github/workflows"
+	defaultWorkflowDir  = "workflows"
+	branchNamePattern   = "ghconfig/workflows/%s"
+	ghConfigWorkflowDir = ".ghconfig/%s"
+	githubConfigDir     = ".github"
 )
 
 type WorkflowTemplate struct {
-	Workflow *Workflow
+	Workflow *workflow.Workflow
 	FileName string
 	FilePath string
 }
@@ -50,7 +52,7 @@ type UpdateWorkflowIntent struct {
 }
 
 type WorkflowFileDraft struct {
-	Workflow    *Workflow
+	Workflow    *workflow.Workflow
 	FileContent *[]byte
 	Filename    string
 	SHA         string
@@ -65,6 +67,7 @@ type Config struct {
 	BaseBranch      string
 	Sid             *shortid.Shortid
 	RepositoryQuery string
+	WorkflowRoot    string
 }
 
 func NewSyncCmd(opts *Config) error {
@@ -73,7 +76,7 @@ func NewSyncCmd(opts *Config) error {
 		return err
 	}
 
-	workflowDirAbs := path.Join(pDir, ghConfigWorkflowDir)
+	workflowDirAbs := path.Join(pDir, fmt.Sprintf(ghConfigWorkflowDir, opts.WorkflowRoot))
 	workflowFiles, err := ioutil.ReadDir(workflowDirAbs)
 	if err != nil {
 		return err
@@ -90,14 +93,15 @@ func NewSyncCmd(opts *Config) error {
 		if err != nil {
 			return err
 		}
-		t := Workflow{}
+		t := workflow.Workflow{}
 		err = yaml.Unmarshal(bytes, &t)
 		if err != nil {
 			return err
 		}
 		templates = append(templates, WorkflowTemplate{
 			Workflow: &t,
-			FilePath: path.Join(githubConfigWorkflowDir, workflowName),
+			// restore to .github/workflows structure to update the correct file in the repo
+			FilePath: path.Join(githubConfigDir, defaultWorkflowDir, workflowName),
 			FileName: workflowName,
 		})
 	}
@@ -192,7 +196,7 @@ func NewSyncCmd(opts *Config) error {
 				if err != nil {
 					continue
 				}
-				_, err = file.Write([]byte(fmt.Sprintf("\n# Repository: %v, Workflow: %v\n%v\n---", wr.RepositoryName, draft.Filename, string(y))))
+				_, err = file.Write([]byte(fmt.Sprintf("\n# Repository: %v, Workflow: %v\n%v\n---", wr.RepositoryName, draft.FilePath, string(y))))
 				if err != nil {
 					kingpin.Errorf("could not write to ghconfig-debug.yml: %v", err)
 				}
@@ -246,6 +250,7 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 
 	templateVars := map[string]interface{}{"Repo": repo}
 
+	// find matched workflows files in the repository to get git SHA
 	for _, workflowTemplate := range templates {
 		var draft *WorkflowFileDraft
 
@@ -255,7 +260,7 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 			continue
 		}
 
-		proceedTemplate := Workflow{}
+		proceedTemplate := workflow.Workflow{}
 		fileContent := bytesCache.Bytes()
 		err = yaml.Unmarshal(bytesCache.Bytes(), &proceedTemplate)
 		if err != nil {
@@ -288,7 +293,7 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 	return &intent, nil
 }
 
-func templateWorkflow(name string, workflow *Workflow, templateVars map[string]interface{}) (*bytes.Buffer, error) {
+func templateWorkflow(name string, workflow *workflow.Workflow, templateVars map[string]interface{}) (*bytes.Buffer, error) {
 	y, err := yaml.Marshal(workflow)
 	if err != nil {
 		kingpin.Errorf("could not marshal template, %v", err)
@@ -342,7 +347,7 @@ func createPR(opts *Config, intent *UpdateWorkflowIntent) (string, error) {
 			return "", err
 		}
 	} else {
-		return "", fmt.Errorf("could not find a ref on base branch")
+		return "", fmt.Errorf("could not find a ref on the base branch")
 	}
 
 	_, err = updateRepositoryFiles(opts, intent)
