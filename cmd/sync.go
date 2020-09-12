@@ -42,7 +42,6 @@ type WorkflowTemplate struct {
 type WorkflowPatch struct {
 	Patch    jsonpatch.Patch
 	FileName string
-	FilePath string
 }
 
 type UpdateWorkflowIntentOptions struct {
@@ -100,7 +99,8 @@ func NewSyncCmd(opts *Config) error {
 
 		// check for patch
 		if strings.HasSuffix(workflowFile.Name(), ".patch.json") {
-			workflowName := strings.TrimSuffix(workflowFile.Name(), ".patch.json") + ".yaml"
+			// without extension
+			workflowName := strings.TrimSuffix(workflowFile.Name(), ".patch.json")
 			filePath := path.Join(workflowDirAbs, workflowFile.Name())
 			bytes, err := ioutil.ReadFile(filePath)
 			if err != nil {
@@ -113,8 +113,6 @@ func NewSyncCmd(opts *Config) error {
 				continue
 			}
 			patches = append(patches, WorkflowPatch{
-				// points to the workflow that is patched
-				FilePath: path.Join(githubConfigDir, defaultWorkflowDir, workflowName),
 				FileName: workflowName,
 				Patch:    patch,
 			})
