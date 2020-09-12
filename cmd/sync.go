@@ -108,6 +108,9 @@ func NewSyncCmd(opts *Config) error {
 				kingpin.Errorf("could not read workflow patch file %v.", filePath)
 				continue
 			}
+			if len(bytes) == 0 {
+				continue
+			}
 			patch, err := jsonpatch.DecodePatch(bytes)
 			if err != nil {
 				kingpin.Errorf("invalid workflow patch file %v.", filePath)
@@ -123,6 +126,9 @@ func NewSyncCmd(opts *Config) error {
 			bytes, err := ioutil.ReadFile(filePath)
 			if err != nil {
 				kingpin.Errorf("could not read workflow file %v.", filePath)
+				continue
+			}
+			if len(bytes) == 0 {
 				continue
 			}
 			t := workflow.Workflow{}
@@ -241,7 +247,7 @@ func NewSyncCmd(opts *Config) error {
 				if err != nil {
 					continue
 				}
-				_, err = file.Write([]byte(fmt.Sprintf("\n# Repository: %v, Workflow: %v\n%v\n---", wr.RepositoryName, draft.FilePath, string(y))))
+				_, err = file.Write([]byte(fmt.Sprintf("\n# Repository: %v, Workflow: %v\n%v\n---", wr.RepositoryName, draft.DisplayName, string(y))))
 				if err != nil {
 					kingpin.Errorf("could not write to ghconfig-debug.yml: %v", err)
 				}
@@ -410,8 +416,8 @@ func collectWorkflowFiles(opts *Config, repo *github.Repository, templates []Wor
 				}
 
 				draft = &WorkflowUpdateDraft{}
-				draft.Filename = content.GetName() + " (patch)"
-				draft.DisplayName = content.GetName() + " (patch)"
+				draft.Filename = content.GetName()
+				draft.DisplayName = content.GetName() + " (patched)"
 				draft.Workflow = &t
 				draft.FileContent = &j
 				draft.FilePath = content.GetPath()
