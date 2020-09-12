@@ -48,6 +48,7 @@ We'd love to hear your feedback about ghconfig. If you spot bugs or have feature
 - `ghconfig workflow --no-create-pr`
 - `ghconfig workflow --query=MyOrganisation`
 - `ghconfig workflow --base-branch=master`
+- `ghconfig workflow --root-dir=workflow-dir`
 - `ghconfig workflow --dry-run`
 
 ## Installation
