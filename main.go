@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"os"
-
 	"ghconfig/cmd"
+	"ghconfig/internal"
+	"os"
 
 	"github.com/google/go-github/v32/github"
 	"github.com/teris-io/shortid"
@@ -44,7 +44,7 @@ func main() {
 		kingpin.Fatalf("could not create id generator, %v", err)
 	}
 
-	cfg := &cmd.Config{
+	cfg := &internal.Config{
 		GithubClient:    client,
 		Context:         ctx,
 		DryRun:          *dryRun,
