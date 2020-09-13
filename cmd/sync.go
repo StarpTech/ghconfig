@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"ghconfig/internal"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path"
 	"time"
@@ -18,18 +19,43 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func NewSyncCmd(opts *internal.Config) error {
-	pDir, err := os.Getwd()
-	if err != nil {
-		return err
+type (
+	GetRepositoryList func(reposNames []string) []string
+	SyncOption        func(*SyncOptions) error
+	SyncOptions       struct {
+		GetRepositorySelection GetRepositoryList
 	}
-	workflowDirAbs := path.Join(pDir, fmt.Sprintf(internal.GhConfigWorkflowDir, opts.WorkflowRoot))
+)
+
+func RepositoryPrompt(l GetRepositoryList) SyncOption {
+	return func(o *SyncOptions) error {
+		o.GetRepositorySelection = l
+		return nil
+	}
+}
+
+func GetDefaultOptions() SyncOptions {
+	opts := SyncOptions{
+		GetRepositorySelection: askRepositories,
+	}
+	return opts
+}
+
+func NewSyncCmd(globalOptions *internal.Config, options ...SyncOption) error {
+	syncOpts := GetDefaultOptions()
+	for _, opt := range options {
+		if err := opt(&syncOpts); err != nil {
+			return err
+		}
+	}
+
+	workflowDirAbs := path.Join(globalOptions.RootDir, fmt.Sprintf(internal.GhConfigWorkflowDir, globalOptions.WorkflowRoot))
 	templates, err := internal.FindWorkflows(workflowDirAbs)
 	if err != nil {
 		return err
 	}
 
-	workflowPatchesDirAbs := path.Join(pDir, fmt.Sprintf(internal.GhConfigWorkflowDir, path.Join(opts.WorkflowRoot, "patches")))
+	workflowPatchesDirAbs := path.Join(globalOptions.RootDir, fmt.Sprintf(internal.GhConfigWorkflowDir, path.Join(globalOptions.WorkflowRoot, "patches")))
 	patches, err := internal.FindPatches(workflowPatchesDirAbs)
 	if err != nil {
 		return err
@@ -39,7 +65,7 @@ func NewSyncCmd(opts *internal.Config) error {
 	s.Suffix = " Collecting all available repositories..."
 	s.Start()
 
-	repos, err := internal.FetchAllRepos(opts)
+	repos, err := internal.FetchAllRepos(globalOptions)
 	if err != nil {
 		return err
 	}
@@ -51,14 +77,7 @@ func NewSyncCmd(opts *internal.Config) error {
 		reposNames = append(reposNames, *repo.FullName)
 	}
 
-	targetRepoPrompt := &survey.MultiSelect{
-		Message:  "Please select all target repositories.",
-		PageSize: 20,
-		Options:  reposNames,
-	}
-
-	targetRepos := []string{}
-	survey.AskOne(targetRepoPrompt, &targetRepos)
+	targetRepos := syncOpts.GetRepositorySelection(reposNames)
 
 	packages := []*internal.WorkflowUpdatePackage{}
 
@@ -72,16 +91,16 @@ func NewSyncCmd(opts *internal.Config) error {
 
 	for _, repoFullName := range targetRepos {
 		repo := getRepoByName(repos, repoFullName)
-		branchName := opts.BaseBranch
+		branchName := globalOptions.BaseBranch
 
-		if opts.CreatePR {
-			branchName = fmt.Sprintf(internal.BranchNamePattern, opts.Sid.MustGenerate())
+		if globalOptions.CreatePR {
+			branchName = fmt.Sprintf(internal.BranchNamePattern, globalOptions.Sid.MustGenerate())
 		}
 
 		updateOptions := internal.RepositoryUpdateOptions{
 			Owner:       *repo.GetOwner().Login,
 			Repo:        repo.GetName(),
-			BaseRef:     opts.BaseBranch,
+			BaseRef:     globalOptions.BaseBranch,
 			Branch:      branchName,
 			PRBranchRef: "refs/heads/" + branchName,
 		}
@@ -90,8 +109,7 @@ func NewSyncCmd(opts *internal.Config) error {
 			RepositoryOptions: updateOptions,
 			Repository:        repo,
 		}
-
-		files, err := collectWorkflowChanges(opts, pkg, templates, patches)
+		files, err := collectWorkflowChanges(globalOptions, pkg, templates, patches)
 		if err != nil {
 			kingpin.Errorf("could not update workflow files, Repo: %v, error: %v", repoFullName, err)
 			continue
@@ -100,15 +118,15 @@ func NewSyncCmd(opts *internal.Config) error {
 
 		if len(pkg.Files) > 0 {
 			pullRequestURL := ""
-			if !opts.DryRun {
-				if opts.CreatePR {
-					pullRequestURL, err = internal.CreatePR(opts, pkg)
+			if !globalOptions.DryRun {
+				if globalOptions.CreatePR {
+					pullRequestURL, err = internal.CreatePR(globalOptions, pkg)
 					if err != nil {
 						kingpin.Errorf("could not create PR with changes: %v", err)
 						continue
 					}
 				} else {
-					err := internal.UpdateRepositoryFiles(opts, &pkg.RepositoryOptions, pkg.Files)
+					err := internal.UpdateRepositoryFiles(globalOptions, &pkg.RepositoryOptions, pkg.Files)
 					if err != nil {
 						kingpin.Errorf("could not update files only on remote: %v", err)
 						continue
@@ -143,8 +161,8 @@ func NewSyncCmd(opts *internal.Config) error {
 	fmt.Println()
 	t.Print()
 
-	if opts.DryRun {
-		file, err := os.Create(path.Join(pDir, "ghconfig-debug.yml"))
+	if globalOptions.DryRun {
+		file, err := os.Create(path.Join(globalOptions.RootDir, "ghconfig-debug.yml"))
 		if err != nil {
 			kingpin.Errorf("could not create ghconfig-debug.yml: %v", err)
 		}
@@ -167,6 +185,18 @@ func NewSyncCmd(opts *internal.Config) error {
 	return nil
 }
 
+func askRepositories(reposNames []string) []string {
+	targetRepoPrompt := &survey.MultiSelect{
+		Message:  "Please select all repositories:",
+		PageSize: 20,
+		Options:  reposNames,
+	}
+
+	targetRepos := []string{}
+	survey.AskOne(targetRepoPrompt, &targetRepos)
+	return targetRepos
+}
+
 func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdatePackage, templates []*internal.WorkflowTemplate, patches []*internal.PatchData) ([]*internal.WorkflowUpdatePackageFile, error) {
 	_, dirContent, resp, err := opts.GithubClient.Repositories.GetContents(
 		opts.Context,
@@ -182,11 +212,10 @@ func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdateP
 
 	if err != nil {
 		// when repo has no .github/workflow directory
-		if resp.StatusCode == 404 {
-			return files, nil
+		if resp.StatusCode != 404 {
+			kingpin.Errorf("could not list workflow directory, %v", err)
+			return nil, err
 		}
-		kingpin.Errorf("could not list workflow directory, %v", err)
-		return nil, err
 	}
 
 	templateVars := map[string]interface{}{"Repo": pkg.Repository}
@@ -236,95 +265,100 @@ func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdateP
 
 	for _, patch := range patches {
 		var file *internal.WorkflowUpdatePackageFile
-		for _, content := range dirContent {
-			if content.GetName() == patch.Filename {
-				r, err := opts.GithubClient.Repositories.DownloadContents(
-					opts.Context,
-					pkg.RepositoryOptions.Owner,
-					pkg.RepositoryOptions.Repo,
-					content.GetPath(),
-					&github.RepositoryContentGetOptions{
-						Ref: pkg.RepositoryOptions.BaseRef,
-					},
-				)
-				if err != nil {
-					kingpin.Errorf("could not download workflow file for patch, %v", err)
-					continue
-				}
-				data, err := ioutil.ReadAll(r)
-				if err != nil {
-					kingpin.Errorf("could not read from workflow file for patch, %v", err)
-					continue
-				}
-
-				t := internal.GithubWorkflow{}
-				err = yaml.Unmarshal(data, &t)
-				if err != nil {
-					kingpin.Errorf("could not unmarshal workflow, %v", err)
-					continue
-				}
-
-				repositoryFileJSON, err := json.Marshal(t)
-				if err != nil {
-					kingpin.Errorf("could not convert yaml to json, %v", err)
-					continue
-				}
-
-				jsonPatchData, err := internal.ExecuteYAMLTemplate(patch.Filename, patch, templateVars)
-				if err != nil {
-					kingpin.Errorf("could not template, %v", err)
-					continue
-				}
-
-				newPatchData := internal.PatchData{}
-				err = yaml.Unmarshal(jsonPatchData.Bytes(), &newPatchData)
-				if err != nil {
-					kingpin.Errorf("could not unmarshal template, %v", err)
-					continue
-				}
-
-				templatedJSONPatchFile, err := json.Marshal(newPatchData.Patch)
-				if err != nil {
-					kingpin.Errorf("could not marshal templated patch file to json, %v", err)
-					continue
-				}
-
-				jsonPatch, err := jsonpatch.DecodePatch(templatedJSONPatchFile)
-				if err != nil {
-					kingpin.Errorf("invalid patch file %v", err)
-					continue
-				}
-
-				data, err = jsonPatch.Apply(repositoryFileJSON)
-				if err != nil {
-					kingpin.Errorf("could not apply patch, %v", err)
-					continue
-				}
-
-				t = internal.GithubWorkflow{}
-				err = yaml.Unmarshal(data, &t)
-				if err != nil {
-					kingpin.Errorf("could not unmarshal patched workflow, %v", err)
-					continue
-				}
-				repositoryFileJSON, err = yaml.Marshal(&t)
-				if err != nil {
-					kingpin.Errorf("could not marshal patched workflow, %v", err)
-					continue
-				}
-
-				file = &internal.WorkflowUpdatePackageFile{}
-				file.RepositoryUpdateOptions = &internal.RepositoryFileUpdateOptions{}
-				file.RepositoryUpdateOptions.Filename = content.GetName()
-				file.RepositoryUpdateOptions.DisplayName = content.GetName() + " (patched)"
-				file.Workflow = &t
-				file.RepositoryUpdateOptions.FileContent = &repositoryFileJSON
-				file.RepositoryUpdateOptions.FilePath = content.GetPath()
-				file.RepositoryUpdateOptions.SHA = content.GetSHA()
-
-				files = append(files, file)
-			}
+		remoteFilePath := path.Join(internal.GithubConfigDir, "workflows", patch.Filename)
+		content, _, _, err := opts.GithubClient.Repositories.GetContents(
+			opts.Context,
+			pkg.RepositoryOptions.Owner,
+			pkg.RepositoryOptions.Repo,
+			remoteFilePath,
+			&github.RepositoryContentGetOptions{
+				Ref: pkg.RepositoryOptions.BaseRef,
+			},
+		)
+		if err != nil {
+			kingpin.Errorf("could not download workflow file for patch, %v", err)
+			continue
 		}
+		resp, err := http.Get(content.GetDownloadURL())
+		if err != nil {
+			kingpin.Errorf("could not download file, %v", err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		data, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			kingpin.Errorf("could not read file response, %v", err)
+			continue
+		}
+
+		t := internal.GithubWorkflow{}
+		err = yaml.Unmarshal(data, &t)
+		if err != nil {
+			kingpin.Errorf("could not unmarshal workflow, %v", err)
+			continue
+		}
+
+		repositoryFileJSON, err := json.Marshal(t)
+		if err != nil {
+			kingpin.Errorf("could not convert yaml to json, %v", err)
+			continue
+		}
+
+		jsonPatchData, err := internal.ExecuteYAMLTemplate(patch.Filename, patch, templateVars)
+		if err != nil {
+			kingpin.Errorf("could not template, %v", err)
+			continue
+		}
+
+		newPatchData := internal.PatchData{}
+		err = yaml.Unmarshal(jsonPatchData.Bytes(), &newPatchData)
+		if err != nil {
+			kingpin.Errorf("could not unmarshal template, %v", err)
+			continue
+		}
+
+		templatedJSONPatchFile, err := json.Marshal(newPatchData.Patch)
+		if err != nil {
+			kingpin.Errorf("could not marshal templated patch file to json, %v", err)
+			continue
+		}
+
+		jsonPatch, err := jsonpatch.DecodePatch(templatedJSONPatchFile)
+		if err != nil {
+			kingpin.Errorf("invalid patch file %v", err)
+			continue
+		}
+
+		data, err = jsonPatch.Apply(repositoryFileJSON)
+		if err != nil {
+			kingpin.Errorf("could not apply patch, %v", err)
+			continue
+		}
+
+		t = internal.GithubWorkflow{}
+		err = yaml.Unmarshal(data, &t)
+		if err != nil {
+			kingpin.Errorf("could not unmarshal patched workflow, %v", err)
+			continue
+		}
+		repositoryFileJSON, err = yaml.Marshal(&t)
+		if err != nil {
+			kingpin.Errorf("could not marshal patched workflow, %v", err)
+			continue
+		}
+
+		file = &internal.WorkflowUpdatePackageFile{}
+		file.RepositoryUpdateOptions = &internal.RepositoryFileUpdateOptions{}
+		file.RepositoryUpdateOptions.Filename = content.GetName()
+		file.RepositoryUpdateOptions.DisplayName = content.GetName() + " (patched)"
+		file.Workflow = &t
+		file.RepositoryUpdateOptions.FileContent = &repositoryFileJSON
+		file.RepositoryUpdateOptions.FilePath = content.GetPath()
+		file.RepositoryUpdateOptions.SHA = content.GetSHA()
+
+		files = append(files, file)
+
 	}
 
 	return files, nil

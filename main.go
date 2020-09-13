@@ -44,6 +44,11 @@ func main() {
 		kingpin.Fatalf("could not create id generator, %v", err)
 	}
 
+	pDir, err := os.Getwd()
+	if err != nil {
+		kingpin.Fatalf("could not get wd, %v", err)
+	}
+
 	cfg := &internal.Config{
 		GithubClient:    client,
 		Context:         ctx,
@@ -53,6 +58,7 @@ func main() {
 		CreatePR:        *createPR,
 		RepositoryQuery: *repositoryQuery,
 		WorkflowRoot:    *workflowRoot,
+		RootDir:         pDir,
 	}
 
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {

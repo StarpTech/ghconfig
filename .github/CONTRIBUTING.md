@@ -62,6 +62,10 @@ goreleaser --snapshot --skip-publish --rm-dist
 
 This repo is shipped with example templates located in `.ghconfig/workflows`. You can run the program and work with them. In future we will implement automatic integration tests.
 
+## Debugging
+
+For easier debugging use the [spew](https://github.com/davecgh/go-spew) package and the [Golang extension](https://code.visualstudio.com/docs/languages/go) for VSCode to debug a test with a click.
+
 ## Resources
 
 - [How to Contribute to Open Source](https://opensource.guide/how-to-contribute/)

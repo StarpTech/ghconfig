@@ -1,0 +1,5 @@
+filename: ci.yaml
+patch:
+  - op: replace
+    path: "/name"
+    value: CI

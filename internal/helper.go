@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
 
@@ -21,6 +22,10 @@ var (
 
 func FindWorkflows(dirPath string) ([]*WorkflowTemplate, error) {
 	templates := []*WorkflowTemplate{}
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		return templates, nil
+	}
+
 	files, err := ioutil.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
@@ -62,6 +67,11 @@ func FindWorkflows(dirPath string) ([]*WorkflowTemplate, error) {
 
 func FindPatches(dirPath string) ([]*PatchData, error) {
 	patches := []*PatchData{}
+
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		return patches, nil
+	}
+
 	files, err := ioutil.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
@@ -113,7 +123,7 @@ func CreatePR(opts *Config, intent *WorkflowUpdatePackage) (string, error) {
 
 	if len(refs) > 0 {
 		// create branch
-		_, _, err = opts.GithubClient.Git.CreateRef(
+		_, _, err := opts.GithubClient.Git.CreateRef(
 			opts.Context,
 			intent.RepositoryOptions.Owner,
 			intent.RepositoryOptions.Repo,
