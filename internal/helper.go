@@ -158,8 +158,8 @@ func CreatePR(opts *Config, intent *WorkflowUpdatePackage) (string, error) {
 	return pr.GetHTMLURL(), nil
 }
 
-func UpdateRepositoryFiles(opts *Config, updateOptions *RepositoryUpdateOptions, drafts []*WorkflowUpdatePackageFile) error {
-	for _, draft := range drafts {
+func UpdateRepositoryFiles(opts *Config, updateOptions *RepositoryUpdateOptions, files []*WorkflowUpdatePackageFile) error {
+	for _, file := range files {
 		// commit message
 		commitMsg := "Update workflow files by ghconfig"
 
@@ -167,18 +167,18 @@ func UpdateRepositoryFiles(opts *Config, updateOptions *RepositoryUpdateOptions,
 			opts.Context,
 			updateOptions.Owner,
 			updateOptions.Repo,
-			draft.RepositoryUpdateOptions.FilePath,
+			file.RepositoryUpdateOptions.FilePath,
 			&github.RepositoryContentFileOptions{
 				Branch:  &updateOptions.Branch,
 				Message: &commitMsg,
-				Content: *draft.RepositoryUpdateOptions.FileContent,
-				SHA:     &draft.RepositoryUpdateOptions.SHA,
+				Content: *file.RepositoryUpdateOptions.FileContent,
+				SHA:     &file.RepositoryUpdateOptions.SHA,
 			},
 		)
 		if err != nil {
 			return nil
 		}
-		draft.RepositoryUpdateOptions.URL = rr.GetHTMLURL()
+		file.RepositoryUpdateOptions.URL = rr.GetHTMLURL()
 	}
 	return nil
 }

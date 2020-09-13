@@ -91,12 +91,12 @@ func NewSyncCmd(opts *internal.Config) error {
 			Repository:        repo,
 		}
 
-		drafts, err := collectWorkflowChanges(opts, pkg, templates, patches)
+		files, err := collectWorkflowChanges(opts, pkg, templates, patches)
 		if err != nil {
 			kingpin.Errorf("could not update workflow files, Repo: %v, error: %v", repoFullName, err)
 			continue
 		}
-		pkg.Files = drafts
+		pkg.Files = files
 
 		if len(pkg.Files) > 0 {
 			pullRequestURL := ""
@@ -116,21 +116,21 @@ func NewSyncCmd(opts *internal.Config) error {
 				}
 			}
 
-			for i, draft := range pkg.Files {
+			for i, files := range pkg.Files {
 				if i == 0 {
 					url := ""
 					if pullRequestURL != "" {
 						url = pullRequestURL
 					} else {
-						url = draft.RepositoryUpdateOptions.URL
+						url = files.RepositoryUpdateOptions.URL
 					}
-					t.AddLine(repo.GetFullName(), draft.RepositoryUpdateOptions.DisplayName, url)
+					t.AddLine(repo.GetFullName(), files.RepositoryUpdateOptions.DisplayName, url)
 				} else {
 					url := ""
 					if pullRequestURL == "" {
-						url = draft.RepositoryUpdateOptions.URL
+						url = files.RepositoryUpdateOptions.URL
 					}
-					t.AddLine("", draft.RepositoryUpdateOptions.DisplayName, url)
+					t.AddLine("", files.RepositoryUpdateOptions.DisplayName, url)
 				}
 			}
 
@@ -151,12 +151,12 @@ func NewSyncCmd(opts *internal.Config) error {
 		defer file.Close()
 
 		for _, wr := range packages {
-			for _, draft := range wr.Files {
-				y, err := yaml.Marshal(draft.Workflow)
+			for _, files := range wr.Files {
+				y, err := yaml.Marshal(files.Workflow)
 				if err != nil {
 					continue
 				}
-				_, err = file.Write([]byte(fmt.Sprintf("\n# Repository: %v, Workflow: %v\n%v\n---", wr.Repository.GetFullName(), draft.RepositoryUpdateOptions.DisplayName, string(y))))
+				_, err = file.Write([]byte(fmt.Sprintf("\n# Repository: %v, Workflow: %v\n%v\n---", wr.Repository.GetFullName(), files.RepositoryUpdateOptions.DisplayName, string(y))))
 				if err != nil {
 					kingpin.Errorf("could not write to ghconfig-debug.yml: %v", err)
 				}
