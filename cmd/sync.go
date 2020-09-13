@@ -12,6 +12,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/briandowns/spinner"
 	"github.com/cheynewallace/tabby"
+	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/google/go-github/v32/github"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
@@ -146,7 +147,7 @@ func NewSyncCmd(opts *internal.Config) error {
 	return nil
 }
 
-func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templates []*internal.WorkflowTemplate, patches []*internal.FilePatch) (*internal.UpdateWorkflowIntent, error) {
+func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templates []*internal.WorkflowTemplate, patches []*internal.PatchData) (*internal.UpdateWorkflowIntent, error) {
 	branchName := opts.BaseBranch
 
 	if opts.CreatePR {
@@ -191,7 +192,7 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 	for _, workflowTemplate := range templates {
 		var draft *internal.WorkflowUpdateDraft
 
-		bytesCache, err := internal.ExecuteTemplate(repo.GetFullName(), workflowTemplate.Workflow, templateVars)
+		bytesCache, err := internal.ExecuteYAMLTemplate(workflowTemplate.FileName, workflowTemplate.Workflow, templateVars)
 		if err != nil {
 			kingpin.Errorf("could not template, %v", err)
 			continue
@@ -231,7 +232,7 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 	for _, patch := range patches {
 		var draft *internal.WorkflowUpdateDraft
 		for _, content := range dirContent {
-			if content.GetName() == patch.PatchData.FileName {
+			if content.GetName() == patch.FileName {
 				r, err := opts.GithubClient.Repositories.DownloadContents(
 					opts.Context,
 					updateOptions.Owner,
@@ -258,13 +259,38 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 					continue
 				}
 
-				j, err := json.Marshal(t)
+				repositoryFileJSON, err := json.Marshal(t)
 				if err != nil {
 					kingpin.Errorf("could not convert yaml to json, %v", err)
 					continue
 				}
 
-				data, err = patch.Patch.Apply(j)
+				jsonPatchData, err := internal.ExecuteYAMLTemplate(patch.FileName, patch, templateVars)
+				if err != nil {
+					kingpin.Errorf("could not template, %v", err)
+					continue
+				}
+
+				newPatchData := internal.PatchData{}
+				err = yaml.Unmarshal(jsonPatchData.Bytes(), &newPatchData)
+				if err != nil {
+					kingpin.Errorf("could not unmarshal template, %v", err)
+					continue
+				}
+
+				templatedJSONPatchFile, err := json.Marshal(newPatchData.Patch)
+				if err != nil {
+					kingpin.Errorf("could not marshal templated patch file to json, %v", err)
+					continue
+				}
+
+				jsonPatch, err := jsonpatch.DecodePatch(templatedJSONPatchFile)
+				if err != nil {
+					kingpin.Errorf("invalid patch file %v", err)
+					continue
+				}
+
+				data, err = jsonPatch.Apply(repositoryFileJSON)
 				if err != nil {
 					kingpin.Errorf("could not apply patch, %v", err)
 					continue
@@ -276,7 +302,7 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 					kingpin.Errorf("could not unmarshal patched workflow, %v", err)
 					continue
 				}
-				j, err = yaml.Marshal(&t)
+				repositoryFileJSON, err = yaml.Marshal(&t)
 				if err != nil {
 					kingpin.Errorf("could not marshal patched workflow, %v", err)
 					continue
@@ -286,7 +312,7 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 				draft.Filename = content.GetName()
 				draft.DisplayName = content.GetName() + " (patched)"
 				draft.Workflow = &t
-				draft.FileContent = &j
+				draft.FileContent = &repositoryFileJSON
 				draft.FilePath = content.GetPath()
 				draft.SHA = content.GetSHA()
 

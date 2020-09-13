@@ -12,8 +12,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
 	github.com/briandowns/spinner v1.11.1
 	github.com/cheynewallace/tabby v1.1.0
-	github.com/davecgh/go-spew v1.1.1
-	github.com/evanphx/json-patch/v5 v5.1.0
+	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/google/go-github/v32 v32.1.0
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
@@ -28,5 +27,4 @@ require (
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v2 v2.3.0
-	sigs.k8s.io/yaml v1.2.0
 )

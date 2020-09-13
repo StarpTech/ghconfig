@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 
-	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/google/go-github/v32/github"
 	"github.com/teris-io/shortid"
 )
@@ -27,7 +26,6 @@ type WorkflowTemplate struct {
 
 type FilePatch struct {
 	PatchData PatchData
-	Patch     jsonpatch.Patch
 }
 
 type PatchData struct {

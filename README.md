@@ -16,7 +16,7 @@ single repository manually. Ghconfig helps you to automate such tasks. You can w
 
 By default a Pull-Request is created for all changes on a repository.
 
-Ghconfig looks for a folder `.ghconfig` in the root of your repository.
+Ghconfig looks for a folder `.ghconfig` in the root of your repository. Check out the [`.ghconfig`](./.ghconfig) folder in this repository to see how it will look like.
 
 ```
 .

@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func ExecuteTemplate(name string, i interface{}, templateVars map[string]interface{}) (*bytes.Buffer, error) {
+func ExecuteYAMLTemplate(name string, i interface{}, templateVars map[string]interface{}) (*bytes.Buffer, error) {
 	y, err := yaml.Marshal(i)
 	if err != nil {
 		kingpin.Errorf("could not marshal template, %v", err)

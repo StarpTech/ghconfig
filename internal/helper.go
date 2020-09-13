@@ -1,14 +1,12 @@
 package internal
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"path"
 	"path/filepath"
 	"sync"
 
-	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/google/go-github/v32/github"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
@@ -62,8 +60,8 @@ func FindWorkflows(dirPath string) ([]*WorkflowTemplate, error) {
 	return templates, nil
 }
 
-func FindPatches(dirPath string) ([]*FilePatch, error) {
-	patches := []*FilePatch{}
+func FindPatches(dirPath string) ([]*PatchData, error) {
+	patches := []*PatchData{}
 	files, err := ioutil.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
@@ -92,20 +90,7 @@ func FindPatches(dirPath string) ([]*FilePatch, error) {
 			kingpin.Errorf("file %v can't be parsed as patch file.", filePath)
 			continue
 		}
-		patchJSONData, err := json.Marshal(patchData.Patch)
-		if err != nil {
-			kingpin.Errorf("could marshal patch to json %v.", filePath)
-			continue
-		}
-		patch, err := jsonpatch.DecodePatch(patchJSONData)
-		if err != nil {
-			kingpin.Errorf("invalid patch file %v.", filePath)
-			continue
-		}
-		patches = append(patches, &FilePatch{
-			PatchData: patchData,
-			Patch:     patch,
-		})
+		patches = append(patches, &patchData)
 
 	}
 	return patches, nil
