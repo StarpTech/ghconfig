@@ -12,7 +12,7 @@ Github CI Workflow files can be in organizations very similiar. If you need to u
 single repository manually. Ghconfig helps you to automate such tasks. You can work in two modes.
 
 - Create a new workflow file based on your templates.
-- Apply a [RFC6902 JSON patche](http://tools.ietf.org/html/rfc6902) on an existing workflow file.
+- Apply a [RFC6902 JSON patch](http://tools.ietf.org/html/rfc6902) on an existing workflow file.
 
 By default a Pull-Request is created for all changes on a repository.
 
