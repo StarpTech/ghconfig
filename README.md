@@ -74,14 +74,6 @@ You can [download](https://github.com/starptech/ghconfig/releases) `ghconfig` fr
 
 In all workflow files you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library. We use [sprig](http://masterminds.github.io/sprig/) to provide common helper functions.
 
-Example:
-
-```go
-env:
-    A: $(( uuidv4 ))
-    B: $(( .Repo.GetFullName ))
-```
-
 ## Rate Limiting
 
 GitHub imposes a rate limit on all API clients. Unauthenticated clients are
