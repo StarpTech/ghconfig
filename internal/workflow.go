@@ -12,7 +12,7 @@ type With = map[string]string
 
 type Jobs = map[string]Job
 
-type Workflow struct {
+type GithubWorkflow struct {
 	Name     string   `yaml:"name,omitempty" json:"name,omitempty"`
 	On       On       `yaml:"on,omitempty" json:"on,omitempty"`
 	Env      Env      `yaml:"env,omitempty" json:"env,omitempty"`

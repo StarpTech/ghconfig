@@ -60,7 +60,7 @@ func NewSyncCmd(opts *internal.Config) error {
 	targetRepos := []string{}
 	survey.AskOne(targetRepoPrompt, &targetRepos)
 
-	intents := []*internal.UpdateWorkflowIntent{}
+	packages := []*internal.WorkflowUpdatePackage{}
 
 	s = spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 	s.Suffix = " Update workflow files and create pull requests..."
@@ -72,23 +72,43 @@ func NewSyncCmd(opts *internal.Config) error {
 
 	for _, repoFullName := range targetRepos {
 		repo := getRepoByName(repos, repoFullName)
-		intent, err := collectWorkflowFiles(opts, repo, templates, patches)
+		branchName := opts.BaseBranch
+
+		if opts.CreatePR {
+			branchName = fmt.Sprintf(internal.BranchNamePattern, opts.Sid.MustGenerate())
+		}
+
+		updateOptions := internal.RepositoryUpdateOptions{
+			Owner:       *repo.GetOwner().Login,
+			Repo:        repo.GetName(),
+			BaseRef:     opts.BaseBranch,
+			Branch:      branchName,
+			PRBranchRef: "refs/heads/" + branchName,
+		}
+
+		pkg := &internal.WorkflowUpdatePackage{
+			RepositoryOptions: updateOptions,
+			Repository:        repo,
+		}
+
+		drafts, err := collectWorkflowChanges(opts, pkg, templates, patches)
 		if err != nil {
 			kingpin.Errorf("could not update workflow files, Repo: %v, error: %v", repoFullName, err)
 			continue
 		}
+		pkg.Files = drafts
 
-		if len(intent.WorkflowDrafts) > 0 {
+		if len(pkg.Files) > 0 {
 			pullRequestURL := ""
 			if !opts.DryRun {
 				if opts.CreatePR {
-					pullRequestURL, err = internal.CreatePR(opts, intent)
+					pullRequestURL, err = internal.CreatePR(opts, pkg)
 					if err != nil {
 						kingpin.Errorf("could not create PR with changes: %v", err)
 						continue
 					}
 				} else {
-					err := internal.UpdateRepositoryFiles(opts, intent)
+					err := internal.UpdateRepositoryFiles(opts, &pkg.RepositoryOptions, pkg.Files)
 					if err != nil {
 						kingpin.Errorf("could not update files only on remote: %v", err)
 						continue
@@ -96,27 +116,27 @@ func NewSyncCmd(opts *internal.Config) error {
 				}
 			}
 
-			for i, draft := range intent.WorkflowDrafts {
+			for i, draft := range pkg.Files {
 				if i == 0 {
 					url := ""
 					if pullRequestURL != "" {
 						url = pullRequestURL
 					} else {
-						url = draft.Url
+						url = draft.RepositoryUpdateOptions.URL
 					}
-					t.AddLine(repo.GetFullName(), draft.DisplayName, url)
+					t.AddLine(repo.GetFullName(), draft.RepositoryUpdateOptions.DisplayName, url)
 				} else {
 					url := ""
 					if pullRequestURL == "" {
-						url = draft.Url
+						url = draft.RepositoryUpdateOptions.URL
 					}
-					t.AddLine("", draft.DisplayName, url)
+					t.AddLine("", draft.RepositoryUpdateOptions.DisplayName, url)
 				}
 			}
 
 		}
 
-		intents = append(intents, intent)
+		packages = append(packages, pkg)
 	}
 
 	s.Stop()
@@ -130,13 +150,13 @@ func NewSyncCmd(opts *internal.Config) error {
 		}
 		defer file.Close()
 
-		for _, wr := range intents {
-			for _, draft := range wr.WorkflowDrafts {
+		for _, wr := range packages {
+			for _, draft := range wr.Files {
 				y, err := yaml.Marshal(draft.Workflow)
 				if err != nil {
 					continue
 				}
-				_, err = file.Write([]byte(fmt.Sprintf("\n# Repository: %v, Workflow: %v\n%v\n---", wr.RepositoryName, draft.DisplayName, string(y))))
+				_, err = file.Write([]byte(fmt.Sprintf("\n# Repository: %v, Workflow: %v\n%v\n---", wr.Repository.GetFullName(), draft.RepositoryUpdateOptions.DisplayName, string(y))))
 				if err != nil {
 					kingpin.Errorf("could not write to ghconfig-debug.yml: %v", err)
 				}
@@ -147,50 +167,32 @@ func NewSyncCmd(opts *internal.Config) error {
 	return nil
 }
 
-func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templates []*internal.WorkflowTemplate, patches []*internal.PatchData) (*internal.UpdateWorkflowIntent, error) {
-	branchName := opts.BaseBranch
-
-	if opts.CreatePR {
-		branchName = fmt.Sprintf(internal.BranchNamePattern, opts.Sid.MustGenerate())
-	}
-
-	updateOptions := internal.UpdateIntentOptions{
-		Owner:       *repo.GetOwner().Login,
-		Repo:        repo.GetName(),
-		BaseRef:     opts.BaseBranch,
-		Branch:      branchName,
-		PRBranchRef: "refs/heads/" + branchName,
-	}
-
-	intent := internal.UpdateWorkflowIntent{
-		Options:        updateOptions,
-		RepositoryName: repo.GetFullName(),
-	}
-
+func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdatePackage, templates []*internal.WorkflowTemplate, patches []*internal.PatchData) ([]*internal.WorkflowUpdatePackageFile, error) {
+	files := []*internal.WorkflowUpdatePackageFile{}
 	_, dirContent, resp, err := opts.GithubClient.Repositories.GetContents(
 		opts.Context,
-		updateOptions.Owner,
-		updateOptions.Repo,
+		pkg.RepositoryOptions.Owner,
+		pkg.RepositoryOptions.Repo,
 		".github/workflows",
 		&github.RepositoryContentGetOptions{
-			Ref: updateOptions.BaseRef,
+			Ref: pkg.RepositoryOptions.BaseRef,
 		},
 	)
 
 	if err != nil {
 		// when repo has no .github/workflow directory
 		if resp.StatusCode == 404 {
-			return &intent, nil
+			return files, nil
 		}
 		kingpin.Errorf("could not list workflow directory, %v", err)
 		return nil, err
 	}
 
-	templateVars := map[string]interface{}{"Repo": repo}
+	templateVars := map[string]interface{}{"Repo": pkg.Repository}
 
 	// find matched workflows files in the repository to get git SHA
 	for _, workflowTemplate := range templates {
-		var draft *internal.WorkflowUpdateDraft
+		var file *internal.WorkflowUpdatePackageFile
 
 		bytesCache, err := internal.ExecuteYAMLTemplate(workflowTemplate.FileName, workflowTemplate.Workflow, templateVars)
 		if err != nil {
@@ -198,7 +200,7 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 			continue
 		}
 
-		proceedTemplate := internal.Workflow{}
+		proceedTemplate := internal.GithubWorkflow{}
 		fileContent := bytesCache.Bytes()
 		err = yaml.Unmarshal(bytesCache.Bytes(), &proceedTemplate)
 		if err != nil {
@@ -208,38 +210,40 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 
 		for _, content := range dirContent {
 			if content.GetName() == workflowTemplate.FileName {
-				draft = &internal.WorkflowUpdateDraft{}
-				draft.Filename = content.GetName()
-				draft.DisplayName = draft.Filename
-				draft.Workflow = &proceedTemplate
-				draft.FileContent = &fileContent
-				draft.FilePath = content.GetPath()
-				draft.SHA = content.GetSHA()
+				file = &internal.WorkflowUpdatePackageFile{}
+				file.RepositoryUpdateOptions = &internal.RepositoryFileUpdateOptions{}
+				file.RepositoryUpdateOptions.Filename = content.GetName()
+				file.RepositoryUpdateOptions.DisplayName = file.RepositoryUpdateOptions.Filename
+				file.Workflow = &proceedTemplate
+				file.RepositoryUpdateOptions.FileContent = &fileContent
+				file.RepositoryUpdateOptions.FilePath = content.GetPath()
+				file.RepositoryUpdateOptions.SHA = content.GetSHA()
 			}
 		}
-		if draft == nil {
-			draft = &internal.WorkflowUpdateDraft{}
-			draft.Filename = workflowTemplate.FileName
-			draft.DisplayName = workflowTemplate.FileName
-			draft.Workflow = &proceedTemplate
-			draft.FileContent = &fileContent
-			draft.FilePath = workflowTemplate.FilePath
+		if file == nil {
+			file = &internal.WorkflowUpdatePackageFile{}
+			file.RepositoryUpdateOptions = &internal.RepositoryFileUpdateOptions{}
+			file.RepositoryUpdateOptions.Filename = workflowTemplate.FileName
+			file.RepositoryUpdateOptions.DisplayName = workflowTemplate.FileName
+			file.Workflow = &proceedTemplate
+			file.RepositoryUpdateOptions.FileContent = &fileContent
+			file.RepositoryUpdateOptions.FilePath = workflowTemplate.FilePath
 		}
 
-		intent.WorkflowDrafts = append(intent.WorkflowDrafts, draft)
+		files = append(files, file)
 	}
 
 	for _, patch := range patches {
-		var draft *internal.WorkflowUpdateDraft
+		var file *internal.WorkflowUpdatePackageFile
 		for _, content := range dirContent {
 			if content.GetName() == patch.FileName {
 				r, err := opts.GithubClient.Repositories.DownloadContents(
 					opts.Context,
-					updateOptions.Owner,
-					updateOptions.Repo,
+					pkg.RepositoryOptions.Owner,
+					pkg.RepositoryOptions.Repo,
 					content.GetPath(),
 					&github.RepositoryContentGetOptions{
-						Ref: updateOptions.BaseRef,
+						Ref: pkg.RepositoryOptions.BaseRef,
 					},
 				)
 				if err != nil {
@@ -252,7 +256,7 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 					continue
 				}
 
-				t := internal.Workflow{}
+				t := internal.GithubWorkflow{}
 				err = yaml.Unmarshal(data, &t)
 				if err != nil {
 					kingpin.Errorf("could not unmarshal workflow, %v", err)
@@ -296,7 +300,7 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 					continue
 				}
 
-				t = internal.Workflow{}
+				t = internal.GithubWorkflow{}
 				err = yaml.Unmarshal(data, &t)
 				if err != nil {
 					kingpin.Errorf("could not unmarshal patched workflow, %v", err)
@@ -308,20 +312,21 @@ func collectWorkflowFiles(opts *internal.Config, repo *github.Repository, templa
 					continue
 				}
 
-				draft = &internal.WorkflowUpdateDraft{}
-				draft.Filename = content.GetName()
-				draft.DisplayName = content.GetName() + " (patched)"
-				draft.Workflow = &t
-				draft.FileContent = &repositoryFileJSON
-				draft.FilePath = content.GetPath()
-				draft.SHA = content.GetSHA()
+				file = &internal.WorkflowUpdatePackageFile{}
+				file.RepositoryUpdateOptions = &internal.RepositoryFileUpdateOptions{}
+				file.RepositoryUpdateOptions.Filename = content.GetName()
+				file.RepositoryUpdateOptions.DisplayName = content.GetName() + " (patched)"
+				file.Workflow = &t
+				file.RepositoryUpdateOptions.FileContent = &repositoryFileJSON
+				file.RepositoryUpdateOptions.FilePath = content.GetPath()
+				file.RepositoryUpdateOptions.SHA = content.GetSHA()
 
-				intent.WorkflowDrafts = append(intent.WorkflowDrafts, draft)
+				files = append(files, file)
 			}
 		}
 	}
 
-	return &intent, nil
+	return files, nil
 }
 
 func getRepoByName(repos []*github.Repository, name string) *github.Repository {

@@ -44,7 +44,7 @@ func FindWorkflows(dirPath string) ([]*WorkflowTemplate, error) {
 		if len(bytes) == 0 {
 			continue
 		}
-		t := Workflow{}
+		t := GithubWorkflow{}
 		err = yaml.Unmarshal(bytes, &t)
 		if err != nil {
 			kingpin.Errorf("workflow file %v can't be parsed as workflow.", filePath)
@@ -96,14 +96,14 @@ func FindPatches(dirPath string) ([]*PatchData, error) {
 	return patches, nil
 }
 
-func CreatePR(opts *Config, intent *UpdateWorkflowIntent) (string, error) {
+func CreatePR(opts *Config, intent *WorkflowUpdatePackage) (string, error) {
 	// get ref to branch from
 	refs, _, err := opts.GithubClient.Git.ListMatchingRefs(
 		opts.Context,
-		intent.Options.Owner,
-		intent.Options.Repo,
+		intent.RepositoryOptions.Owner,
+		intent.RepositoryOptions.Repo,
 		&github.ReferenceListOptions{
-			Ref: "heads/" + intent.Options.BaseRef,
+			Ref: "heads/" + intent.RepositoryOptions.BaseRef,
 		},
 	)
 
@@ -115,11 +115,11 @@ func CreatePR(opts *Config, intent *UpdateWorkflowIntent) (string, error) {
 		// create branch
 		_, _, err = opts.GithubClient.Git.CreateRef(
 			opts.Context,
-			intent.Options.Owner,
-			intent.Options.Repo,
+			intent.RepositoryOptions.Owner,
+			intent.RepositoryOptions.Repo,
 			&github.Reference{
 				// the name of the new branch
-				Ref: &intent.Options.PRBranchRef,
+				Ref: &intent.RepositoryOptions.PRBranchRef,
 				// branch from master
 				Object: &github.GitObject{SHA: refs[0].Object.SHA},
 			},
@@ -131,7 +131,7 @@ func CreatePR(opts *Config, intent *UpdateWorkflowIntent) (string, error) {
 		return "", fmt.Errorf("could not find a ref on the base branch")
 	}
 
-	err = UpdateRepositoryFiles(opts, intent)
+	err = UpdateRepositoryFiles(opts, &intent.RepositoryOptions, intent.Files)
 	if err != nil {
 		return "", err
 	}
@@ -142,13 +142,13 @@ func CreatePR(opts *Config, intent *UpdateWorkflowIntent) (string, error) {
 
 	pr, _, err := opts.GithubClient.PullRequests.Create(
 		opts.Context,
-		intent.Options.Owner,
-		intent.Options.Repo,
+		intent.RepositoryOptions.Owner,
+		intent.RepositoryOptions.Repo,
 		&github.NewPullRequest{
-			Base:  &intent.Options.BaseRef,
+			Base:  &intent.RepositoryOptions.BaseRef,
 			Title: &commitMsg,
 			Draft: &draft,
-			Head:  &intent.Options.Branch,
+			Head:  &intent.RepositoryOptions.Branch,
 		},
 	)
 	if err != nil {
@@ -158,27 +158,27 @@ func CreatePR(opts *Config, intent *UpdateWorkflowIntent) (string, error) {
 	return pr.GetHTMLURL(), nil
 }
 
-func UpdateRepositoryFiles(opts *Config, intent *UpdateWorkflowIntent) error {
-	for _, draft := range intent.WorkflowDrafts {
+func UpdateRepositoryFiles(opts *Config, updateOptions *RepositoryUpdateOptions, drafts []*WorkflowUpdatePackageFile) error {
+	for _, draft := range drafts {
 		// commit message
 		commitMsg := "Update workflow files by ghconfig"
 
 		rr, _, err := opts.GithubClient.Repositories.UpdateFile(
 			opts.Context,
-			intent.Options.Owner,
-			intent.Options.Repo,
-			draft.FilePath,
+			updateOptions.Owner,
+			updateOptions.Repo,
+			draft.RepositoryUpdateOptions.FilePath,
 			&github.RepositoryContentFileOptions{
-				Branch:  &intent.Options.Branch,
+				Branch:  &updateOptions.Branch,
 				Message: &commitMsg,
-				Content: *draft.FileContent,
-				SHA:     &draft.SHA,
+				Content: *draft.RepositoryUpdateOptions.FileContent,
+				SHA:     &draft.RepositoryUpdateOptions.SHA,
 			},
 		)
 		if err != nil {
 			return nil
 		}
-		draft.Url = rr.GetHTMLURL()
+		draft.RepositoryUpdateOptions.URL = rr.GetHTMLURL()
 	}
 	return nil
 }

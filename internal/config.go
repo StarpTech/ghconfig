@@ -19,13 +19,18 @@ type Config struct {
 }
 
 type WorkflowTemplate struct {
-	Workflow *Workflow
+	Workflow *GithubWorkflow
 	FileName string
 	FilePath string
 }
 
-type FilePatch struct {
-	PatchData PatchData
+type RepositoryFileUpdateOptions struct {
+	FileContent *[]byte
+	Filename    string
+	SHA         string
+	FilePath    string
+	DisplayName string
+	URL         string
 }
 
 type PatchData struct {
@@ -40,7 +45,7 @@ type JsonPatchOperation struct {
 	Value    string `yaml:"value,omitempty" json:"value,omitempty"`
 }
 
-type UpdateIntentOptions struct {
+type RepositoryUpdateOptions struct {
 	Branch      string
 	PRBranchRef string
 	BaseRef     string
@@ -48,18 +53,13 @@ type UpdateIntentOptions struct {
 	Repo        string
 }
 
-type UpdateWorkflowIntent struct {
-	RepositoryName string
-	WorkflowDrafts []*WorkflowUpdateDraft
-	Options        UpdateIntentOptions
+type WorkflowUpdatePackage struct {
+	Repository        *github.Repository
+	Files             []*WorkflowUpdatePackageFile
+	RepositoryOptions RepositoryUpdateOptions
 }
 
-type WorkflowUpdateDraft struct {
-	Workflow    *Workflow
-	FileContent *[]byte
-	Filename    string
-	SHA         string
-	FilePath    string
-	DisplayName string
-	Url         string
+type WorkflowUpdatePackageFile struct {
+	Workflow                *GithubWorkflow
+	RepositoryUpdateOptions *RepositoryFileUpdateOptions
 }
