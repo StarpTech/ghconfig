@@ -19,9 +19,9 @@ type Config struct {
 }
 
 type WorkflowTemplate struct {
-	Workflow *GithubWorkflow
-	FileName string
-	FilePath string
+	Workflow           *GithubWorkflow
+	Filename           string
+	RepositoryFilePath string
 }
 
 type RepositoryFileUpdateOptions struct {
@@ -34,15 +34,14 @@ type RepositoryFileUpdateOptions struct {
 }
 
 type PatchData struct {
-	FileName string               `yaml:"fileName,omitempty" json:"fileName,omitempty"`
+	Filename string               `yaml:"filename,omitempty" json:"filename,omitempty"`
 	Patch    []JsonPatchOperation `yaml:"patch,omitempty" json:"patch,omitempty"`
 }
 
 type JsonPatchOperation struct {
-	FileName string `yaml:"name,omitempty" json:"name,omitempty"`
-	Op       string `yaml:"op,omitempty" json:"op,omitempty"`
-	Path     string `yaml:"path,omitempty" json:"path,omitempty"`
-	Value    string `yaml:"value,omitempty" json:"value,omitempty"`
+	Op    string `yaml:"op,omitempty" json:"op,omitempty"`
+	Path  string `yaml:"path,omitempty" json:"path,omitempty"`
+	Value string `yaml:"value,omitempty" json:"value,omitempty"`
 }
 
 type RepositoryUpdateOptions struct {

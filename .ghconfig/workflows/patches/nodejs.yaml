@@ -1,4 +1,4 @@
-fileName: nodejs.yml
+filename: nodejs.yml
 patch:
   - op: replace
     path: "/name"

@@ -53,8 +53,8 @@ func FindWorkflows(dirPath string) ([]*WorkflowTemplate, error) {
 		templates = append(templates, &WorkflowTemplate{
 			Workflow: &t,
 			// restore to .github/workflows structure to update the correct file in the repo
-			FilePath: path.Join(GithubConfigDir, DefaultWorkflowDir, workflowName),
-			FileName: workflowName,
+			RepositoryFilePath: path.Join(GithubConfigDir, DefaultWorkflowDir, workflowName),
+			Filename:           workflowName,
 		})
 	}
 	return templates, nil

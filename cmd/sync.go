@@ -194,7 +194,7 @@ func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdateP
 	for _, workflowTemplate := range templates {
 		var file *internal.WorkflowUpdatePackageFile
 
-		bytesCache, err := internal.ExecuteYAMLTemplate(workflowTemplate.FileName, workflowTemplate.Workflow, templateVars)
+		bytesCache, err := internal.ExecuteYAMLTemplate(workflowTemplate.Filename, workflowTemplate.Workflow, templateVars)
 		if err != nil {
 			kingpin.Errorf("could not template, %v", err)
 			continue
@@ -209,7 +209,7 @@ func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdateP
 		}
 
 		for _, content := range dirContent {
-			if content.GetName() == workflowTemplate.FileName {
+			if content.GetName() == workflowTemplate.Filename {
 				file = &internal.WorkflowUpdatePackageFile{}
 				file.RepositoryUpdateOptions = &internal.RepositoryFileUpdateOptions{}
 				file.RepositoryUpdateOptions.Filename = content.GetName()
@@ -223,11 +223,11 @@ func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdateP
 		if file == nil {
 			file = &internal.WorkflowUpdatePackageFile{}
 			file.RepositoryUpdateOptions = &internal.RepositoryFileUpdateOptions{}
-			file.RepositoryUpdateOptions.Filename = workflowTemplate.FileName
-			file.RepositoryUpdateOptions.DisplayName = workflowTemplate.FileName
+			file.RepositoryUpdateOptions.Filename = workflowTemplate.Filename
+			file.RepositoryUpdateOptions.DisplayName = workflowTemplate.Filename
 			file.Workflow = &proceedTemplate
 			file.RepositoryUpdateOptions.FileContent = &fileContent
-			file.RepositoryUpdateOptions.FilePath = workflowTemplate.FilePath
+			file.RepositoryUpdateOptions.FilePath = workflowTemplate.RepositoryFilePath
 		}
 
 		files = append(files, file)
@@ -236,7 +236,7 @@ func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdateP
 	for _, patch := range patches {
 		var file *internal.WorkflowUpdatePackageFile
 		for _, content := range dirContent {
-			if content.GetName() == patch.FileName {
+			if content.GetName() == patch.Filename {
 				r, err := opts.GithubClient.Repositories.DownloadContents(
 					opts.Context,
 					pkg.RepositoryOptions.Owner,
@@ -269,7 +269,7 @@ func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdateP
 					continue
 				}
 
-				jsonPatchData, err := internal.ExecuteYAMLTemplate(patch.FileName, patch, templateVars)
+				jsonPatchData, err := internal.ExecuteYAMLTemplate(patch.Filename, patch, templateVars)
 				if err != nil {
 					kingpin.Errorf("could not template, %v", err)
 					continue
