@@ -168,7 +168,6 @@ func NewSyncCmd(opts *internal.Config) error {
 }
 
 func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdatePackage, templates []*internal.WorkflowTemplate, patches []*internal.PatchData) ([]*internal.WorkflowUpdatePackageFile, error) {
-	files := []*internal.WorkflowUpdatePackageFile{}
 	_, dirContent, resp, err := opts.GithubClient.Repositories.GetContents(
 		opts.Context,
 		pkg.RepositoryOptions.Owner,
@@ -178,6 +177,8 @@ func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdateP
 			Ref: pkg.RepositoryOptions.BaseRef,
 		},
 	)
+
+	files := []*internal.WorkflowUpdatePackageFile{}
 
 	if err != nil {
 		// when repo has no .github/workflow directory

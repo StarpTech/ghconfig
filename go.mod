@@ -20,6 +20,7 @@ require (
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
+	github.com/pieterclaerhout/go-waitgroup v1.0.7
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect

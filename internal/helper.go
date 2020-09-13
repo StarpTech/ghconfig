@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"path"
 	"path/filepath"
-	"sync"
 
 	"github.com/google/go-github/v32/github"
+	"github.com/pieterclaerhout/go-waitgroup"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 )
@@ -212,20 +212,19 @@ func FetchAllRepos(opts *Config) ([]*github.Repository, error) {
 	}
 	allRepos = append(allRepos, searchResult.Repositories...)
 
-	var wg sync.WaitGroup
+	wg := waitgroup.NewWaitGroup(4)
 	var results = make(chan *[]*github.Repository, resp.LastPage)
 
 	for i := 2; i <= resp.LastPage; i++ {
-		wg.Add(1)
 		cpage := i
-		go func() {
+		wg.Add(func() {
 			defer wg.Done()
 			repos, _, err := fetch(cpage)
 			if err != nil {
 				fmt.Printf("error fetching repositories from github: %v", err)
 			}
 			results <- &repos.Repositories
-		}()
+		})
 	}
 
 	wg.Wait()
