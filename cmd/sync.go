@@ -209,18 +209,13 @@ func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdateP
 	)
 
 	files := []*internal.WorkflowUpdatePackageFile{}
-
-	if err != nil {
-		// when repo has no .github/workflow directory
-		if resp.StatusCode != 404 {
-			kingpin.Errorf("could not list workflow directory, %v", err)
-			return nil, err
-		}
-	}
-
 	templateVars := map[string]interface{}{"Repo": pkg.Repository}
 
-	// find matched workflows files in the repository to get git SHA
+	if err != nil && resp.StatusCode != 404 {
+		kingpin.Errorf("could not list workflow directory, %v", err)
+		return nil, err
+	}
+
 	for _, workflowTemplate := range templates {
 		var file *internal.WorkflowUpdatePackageFile
 
@@ -276,8 +271,12 @@ func collectWorkflowChanges(opts *internal.Config, pkg *internal.WorkflowUpdateP
 			},
 		)
 		if err != nil {
-			kingpin.Errorf("could not download workflow file for patch, %v", err)
-			continue
+			if resp.StatusCode == 404 {
+				kingpin.Errorf("workflow file doesn't exist, %v", err)
+				continue
+			}
+			kingpin.Errorf("could not list workflow file, %v", err)
+			return nil, err
 		}
 		resp, err := http.Get(content.GetDownloadURL())
 		if err != nil {
