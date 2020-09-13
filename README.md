@@ -1,7 +1,7 @@
 <p align="center">
   <img alt="ghconfig Logo" src="https://raw.githubusercontent.com/StarpTech/ghconfig/master/docs/logo.png" />
   <h3 align="center">GitHub Config</h3>
-  <a href="https://github.com/StarpTech/ghconfig/actions?query=workflow%3Atests"><img src="https://github.com/StarpTech/ghconfig/workflows/tests/badge.svg" alt="Test Status" style="max-width:100%;"></a>
+  <a style="display:block;" align="center" href="https://github.com/StarpTech/ghconfig/actions?query=workflow%3Atests"><img src="https://github.com/StarpTech/ghconfig/workflows/tests/badge.svg" alt="Test Status" style="max-width:100%;"></a>
   <p align="center">Manage (.github) repository configurations as a fleet.</p>
 </p>
 
