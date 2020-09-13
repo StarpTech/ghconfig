@@ -37,7 +37,7 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository. Check ou
 │   └── SUPPORT.md
 ```
 
-This directory must have the same structure as your `.github` folder. Any `yaml` file is handled as a [Go template](https://golang.org/pkg/text/template/).
+This directory follows the same structure as your `.github` folder. All `yaml` files are handled as a [Go template](https://golang.org/pkg/text/template/) and in them you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and additionally to all utility functions of [sprig](http://masterminds.github.io/sprig/).
 
 ## Example:
 
@@ -69,10 +69,6 @@ We'd love to hear your feedback about ghconfig. If you spot bugs or have feature
 
 Ensure that your personal access token is exported with `GITHUB_TOKEN`.
 You can [download](https://github.com/starptech/ghconfig/releases) `ghconfig` from Github.
-
-## Templating
-
-In all workflow files you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library. We use [sprig](http://masterminds.github.io/sprig/) to provide common helper functions.
 
 ## Rate Limiting
 
