@@ -31,7 +31,7 @@ single repository manually. Ghconfig helps you to automate such tasks.
 )
 
 func main() {
-	app.Version("0.6.1")
+	app.Version("0.7.0")
 	app.Parse(os.Args[1:])
 	log.SetHandler(cli.Default)
 	log.SetLevel(log.InfoLevel)
