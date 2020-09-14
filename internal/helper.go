@@ -7,9 +7,9 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/apex/log"
 	"github.com/google/go-github/v32/github"
 	"github.com/pieterclaerhout/go-waitgroup"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -43,7 +43,7 @@ func FindWorkflows(dirPath string) ([]*WorkflowTemplate, error) {
 		filePath := path.Join(dirPath, workflowName)
 		bytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			kingpin.Errorf("could not read workflow file %v.", filePath)
+			log.WithError(err).Errorf("could not read workflow file: %v", filePath)
 			continue
 		}
 		if len(bytes) == 0 {
@@ -52,7 +52,7 @@ func FindWorkflows(dirPath string) ([]*WorkflowTemplate, error) {
 		t := GithubWorkflow{}
 		err = yaml.Unmarshal(bytes, &t)
 		if err != nil {
-			kingpin.Errorf("workflow file %v can't be parsed as workflow.", filePath)
+			log.WithError(err).Errorf("could not parse workflow file: %v", filePath)
 			continue
 		}
 		templates = append(templates, &WorkflowTemplate{
@@ -87,17 +87,17 @@ func FindPatches(dirPath string) ([]*PatchData, error) {
 		filePath := path.Join(dirPath, file.Name())
 		bytes, err := ioutil.ReadFile(filePath)
 		if err != nil {
-			kingpin.Errorf("could not read patch file %v.", filePath)
+			log.WithError(err).Errorf("could not read patch file %v", filePath)
 			continue
 		}
 		if len(bytes) == 0 {
-			kingpin.Errorf("file %v was empty.", filePath)
+			log.Infof("patch file: %v was empty.", filePath)
 			continue
 		}
 		patchData := PatchData{}
 		err = yaml.Unmarshal(bytes, &patchData)
 		if err != nil {
-			kingpin.Errorf("file %v can't be parsed as patch file.", filePath)
+			log.WithError(err).Errorf("could not parse patch file: %v", filePath)
 			continue
 		}
 		patches = append(patches, &patchData)

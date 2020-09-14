@@ -6,6 +6,8 @@ import (
 	"ghconfig/internal"
 	"os"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/cli"
 	"github.com/google/go-github/v32/github"
 	"github.com/teris-io/shortid"
 	"golang.org/x/oauth2"
@@ -31,6 +33,8 @@ single repository manually. Ghconfig helps you to automate such tasks.
 func main() {
 	app.Version("0.6.1")
 	app.Parse(os.Args[1:])
+	log.SetHandler(cli.Default)
+	log.SetLevel(log.InfoLevel)
 
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
@@ -41,12 +45,12 @@ func main() {
 
 	sid, err := shortid.New(1, shortid.DefaultABC, 2342)
 	if err != nil {
-		kingpin.Fatalf("could not create id generator, %v", err)
+		log.WithError(err).Fatalf("could not create id generator")
 	}
 
 	pDir, err := os.Getwd()
 	if err != nil {
-		kingpin.Fatalf("could not get wd, %v", err)
+		log.WithError(err).Fatalf("could not get wd")
 	}
 
 	cfg := &internal.Config{
@@ -64,7 +68,7 @@ func main() {
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
 	case worfklowCommand.FullCommand():
 		if err := cmd.NewSyncCmd(cfg); err != nil {
-			kingpin.Fatalf("command error: %v", err)
+			log.WithError(err).Fatalf("sync command error")
 		}
 	}
 

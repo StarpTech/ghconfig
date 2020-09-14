@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/apex/log"
+	"github.com/apex/log/handlers/memory"
 	"github.com/google/go-github/v32/github"
 )
 
@@ -127,12 +129,19 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 		RootDir:         "../test/fixture/simple-workflow",
 	}
 
+	h := memory.New()
+	log.SetHandler(h)
+
 	getList := func(reposNames []string) []string {
 		return []string{"o/r"}
 	}
 	err := NewSyncCmd(cfg, WithRepositorySelector(getList))
 	if err != nil {
 		t.Fatalf("could not execute sync command, %v", err)
+	}
+
+	if len(h.Entries) > 0 {
+		t.Error("stderr should be empty")
 	}
 }
 
@@ -257,11 +266,18 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 		RootDir:         "../test/fixture/simple-patch",
 	}
 
+	h := memory.New()
+	log.SetHandler(h)
+
 	getList := func(reposNames []string) []string {
 		return []string{"o/r"}
 	}
 	err := NewSyncCmd(cfg, WithRepositorySelector(getList))
 	if err != nil {
 		t.Fatalf("could not execute sync command, %v", err)
+	}
+
+	if len(h.Entries) > 0 {
+		t.Error("stderr should be empty")
 	}
 }
