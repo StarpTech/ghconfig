@@ -18,19 +18,19 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 
 	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		fmt.Fprint(w, `{"id":1, "Login": "StarpTech"}`)
+		fmt.Fprint(w, `{"id":1, "Login": "o"}`)
 	})
 	mux.HandleFunc("/search/repositories", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		testFormValues(t, r, values{
-			"q":        "StarpTech in:name",
+			"q":        "o in:name",
 			"page":     "1",
 			"per_page": "120",
 		})
 
-		fmt.Fprint(w, `{"total_count": 1, "incomplete_results": false, "items": [{"id":1, "name": "shikaka", "full_name": "StarpTech/shikaka", "owner": {"id":1, "Login": "StarpTech"}}]}`)
+		fmt.Fprint(w, `{"total_count": 1, "incomplete_results": false, "items": [{"id":1, "name": "r", "full_name": "o/r", "owner": {"id":1, "Login": "o"}}]}`)
 	})
-	mux.HandleFunc("/repos/StarpTech/shikaka/contents/.github/workflows", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/repos/o/r/contents/.github/workflows", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		fmt.Fprint(w, `[
 		{
@@ -41,17 +41,17 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 		  "sha": "sha"
 		}]`)
 	})
-	mux.HandleFunc("/repos/StarpTech/shikaka/git/matching-refs/heads/master", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/repos/o/r/git/matching-refs/heads/master", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		fmt.Fprint(w, `
 		  [
 		    {
 		      "ref": "refs/heads/master",
-		      "url": "https://api.github.com/repos/StarpTech/shikaka/git/refs/heads/master",
+		      "url": "https://api.github.com/repos/o/r/git/refs/heads/master",
 		      "object": {
 		        "type": "commit",
 		        "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
-		        "url": "https://api.github.com/repos/StarpTech/shikaka/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		        "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
 		      }
 		    }
 		  ]`)
@@ -61,7 +61,7 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 		Ref: github.String("refs/heads/ghconfig/workflows/fixed_id"),
 		SHA: github.String("aa218f56b14c9653891f9e74264a383fa43fefbd"),
 	}
-	mux.HandleFunc("/repos/StarpTech/shikaka/git/refs", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/repos/o/r/git/refs", func(w http.ResponseWriter, r *http.Request) {
 		v := new(createRefRequest)
 		json.NewDecoder(r.Body).Decode(v)
 
@@ -72,11 +72,11 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 		fmt.Fprint(w, `
 		  {
 		    "ref": "refs/heads/ghconfig/workflows/fixed_id",
-		    "url": "https://api.github.com/repos/StarpTech/shikaka/git/refs/heads/ghconfig/workflows/fixed_id",
+		    "url": "https://api.github.com/repos/o/r/git/refs/heads/ghconfig/workflows/fixed_id",
 		    "object": {
 		      "type": "commit",
 		      "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
-		      "url": "https://api.github.com/repos/StarpTech/shikaka/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		      "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
 		    }
 		  }`)
 	})
@@ -87,7 +87,7 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 		Draft: github.Bool(true),
 	}
 
-	mux.HandleFunc("/repos/StarpTech/shikaka/pulls", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/repos/o/r/pulls", func(w http.ResponseWriter, r *http.Request) {
 		v := new(github.NewPullRequest)
 		json.NewDecoder(r.Body).Decode(v)
 
@@ -96,9 +96,9 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 			t.Errorf("Request body = %+v, want %+v", v, input)
 		}
 
-		fmt.Fprint(w, `{"number":1, "html_url": "https://github.com/StarpTech/shikaka/pull/20"}`)
+		fmt.Fprint(w, `{"number":1, "html_url": "https://github.com/o/r/pull/20"}`)
 	})
-	mux.HandleFunc("/repos/StarpTech/shikaka/contents/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/repos/o/r/contents/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "PUT")
 		fmt.Fprint(w, `{
 			"content":{
@@ -107,7 +107,7 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 			"commit":{
 				"message":"m",
 				"sha":"f5f369044773ff9c6383c087466d12adb6fa0828",
-				"html_url": "https://github.com/StarpTech/shikaka/blob/master/.github/workflows/nodejs.yml"
+				"html_url": "https://github.com/o/r/blob/master/.github/workflows/nodejs.yml"
 			}
 		}`)
 	})
@@ -122,15 +122,15 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 		BaseBranch:      "master",
 		Sid:             sid,
 		CreatePR:        true,
-		RepositoryQuery: "StarpTech",
+		RepositoryQuery: "o",
 		WorkflowRoot:    "workflows",
 		RootDir:         "../test/fixture/simple-workflow",
 	}
 
 	getList := func(reposNames []string) []string {
-		return []string{"StarpTech/shikaka"}
+		return []string{"o/r"}
 	}
-	err := NewSyncCmd(cfg, RepositoryPrompt(getList))
+	err := NewSyncCmd(cfg, WithRepositorySelector(getList))
 	if err != nil {
 		t.Fatalf("could not execute sync command, %v", err)
 	}
@@ -142,34 +142,34 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 
 	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		fmt.Fprint(w, `{"id":1, "Login": "StarpTech"}`)
+		fmt.Fprint(w, `{"id":1, "Login": "o"}`)
 	})
 	mux.HandleFunc("/search/repositories", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		testFormValues(t, r, values{
-			"q":        "StarpTech in:name",
+			"q":        "o in:name",
 			"page":     "1",
 			"per_page": "120",
 		})
 
-		fmt.Fprint(w, `{"total_count": 1, "incomplete_results": false, "items": [{"id":1, "name": "shikaka", "full_name": "StarpTech/shikaka", "owner": {"id":1, "Login": "StarpTech"}}]}`)
+		fmt.Fprint(w, `{"total_count": 1, "incomplete_results": false, "items": [{"id":1, "name": "r", "full_name": "o/r", "owner": {"id":1, "Login": "o"}}]}`)
 	})
-	mux.HandleFunc("/repos/StarpTech/shikaka/git/matching-refs/heads/master", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/repos/o/r/git/matching-refs/heads/master", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		fmt.Fprint(w, `
 		  [
 		    {
 		      "ref": "refs/heads/master",
-		      "url": "https://api.github.com/repos/StarpTech/shikaka/git/refs/heads/master",
+		      "url": "https://api.github.com/repos/o/r/git/refs/heads/master",
 		      "object": {
 		        "type": "commit",
 		        "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
-		        "url": "https://api.github.com/repos/StarpTech/shikaka/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		        "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
 		      }
 		    }
 		  ]`)
 	})
-	mux.HandleFunc("/repos/StarpTech/shikaka/contents/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/repos/o/r/contents/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		fmt.Fprint(w, `{
 		  "type": "file",
@@ -186,7 +186,7 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 		Ref: github.String("refs/heads/ghconfig/workflows/fixed_id"),
 		SHA: github.String("aa218f56b14c9653891f9e74264a383fa43fefbd"),
 	}
-	mux.HandleFunc("/repos/StarpTech/shikaka/git/refs", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/repos/o/r/git/refs", func(w http.ResponseWriter, r *http.Request) {
 		v := new(createRefRequest)
 		json.NewDecoder(r.Body).Decode(v)
 
@@ -197,11 +197,11 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 		fmt.Fprint(w, `
 		  {
 		    "ref": "refs/heads/ghconfig/workflows/fixed_id",
-		    "url": "https://api.github.com/repos/StarpTech/shikaka/git/refs/heads/ghconfig/workflows/fixed_id",
+		    "url": "https://api.github.com/repos/o/r/git/refs/heads/ghconfig/workflows/fixed_id",
 		    "object": {
 		      "type": "commit",
 		      "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
-		      "url": "https://api.github.com/repos/StarpTech/shikaka/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		      "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
 		    }
 		  }`)
 	})
@@ -212,7 +212,7 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 		Draft: github.Bool(true),
 	}
 
-	mux.HandleFunc("/repos/StarpTech/shikaka/pulls", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/repos/o/r/pulls", func(w http.ResponseWriter, r *http.Request) {
 		v := new(github.NewPullRequest)
 		json.NewDecoder(r.Body).Decode(v)
 
@@ -221,7 +221,7 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 			t.Errorf("Request body = %+v, want %+v", v, input)
 		}
 
-		fmt.Fprint(w, `{"number":1, "html_url": "https://github.com/StarpTech/shikaka/pull/20"}`)
+		fmt.Fprint(w, `{"number":1, "html_url": "https://github.com/o/r/pull/20"}`)
 	})
 
 	ctx := context.Background()
@@ -234,15 +234,15 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 		BaseBranch:      "master",
 		Sid:             sid,
 		CreatePR:        true,
-		RepositoryQuery: "StarpTech",
+		RepositoryQuery: "o",
 		WorkflowRoot:    "workflows",
 		RootDir:         "../test/fixture/simple-patch",
 	}
 
 	getList := func(reposNames []string) []string {
-		return []string{"StarpTech/shikaka"}
+		return []string{"o/r"}
 	}
-	err := NewSyncCmd(cfg, RepositoryPrompt(getList))
+	err := NewSyncCmd(cfg, WithRepositorySelector(getList))
 	if err != nil {
 		t.Fatalf("could not execute sync command, %v", err)
 	}

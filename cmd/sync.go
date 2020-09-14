@@ -27,7 +27,7 @@ type (
 	}
 )
 
-func RepositoryPrompt(l GetRepositoryList) SyncOption {
+func WithRepositorySelector(l GetRepositoryList) SyncOption {
 	return func(o *SyncOptions) error {
 		o.GetRepositorySelection = l
 		return nil
