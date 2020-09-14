@@ -186,7 +186,7 @@ func UpdateRepositoryFiles(opts *Config, updateOptions *RepositoryUpdateOptions,
 			},
 		)
 		if err != nil {
-			return nil
+			return err
 		}
 		file.RepositoryUpdateOptions.URL = rr.GetHTMLURL()
 	}

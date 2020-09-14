@@ -122,13 +122,13 @@ func NewSyncCmd(globalOptions *internal.Config, options ...SyncOption) error {
 				if globalOptions.CreatePR {
 					pullRequestURL, err = internal.CreatePR(globalOptions, pkg)
 					if err != nil {
-						kingpin.Errorf("could not create PR with changes: %v", err)
+						kingpin.Errorf("could not create PR with changes: Repo: %v, %v", repoFullName, err)
 						continue
 					}
 				} else {
 					err := internal.UpdateRepositoryFiles(globalOptions, &pkg.RepositoryOptions, pkg.Files)
 					if err != nil {
-						kingpin.Errorf("could not update files only on remote: %v", err)
+						kingpin.Errorf("could not update files on remote: Repo: %v, %v", repoFullName, err)
 						continue
 					}
 				}

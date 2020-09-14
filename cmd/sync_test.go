@@ -170,12 +170,29 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 		  ]`)
 	})
 	mux.HandleFunc("/repos/o/r/contents/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "GET")
-		fmt.Fprint(w, `{
-		  "type": "file",
-		  "name": "f",
-		  "download_url": "`+serverURL+baseURLPath+`/download/.github/workflows/ci.yaml"
-		}`)
+		switch r.Method {
+		case "GET":
+			fmt.Fprint(w, `{
+				"type": "file",
+				"name": "f",
+				"path": ".github/workflows/ci.yaml",
+				"download_url": "`+serverURL+baseURLPath+`/download/.github/workflows/ci.yaml"
+			  }`)
+		case "PUT":
+			fmt.Fprint(w, `
+			{
+				"content":{
+					"name":"CI"
+				},
+				"commit":{
+					"message":"m",
+					"sha":"f5f369044773ff9c6383c087466d12adb6fa0828",
+					"html_url": "https://github.com/o/r/blob/master/.github/workflows/ci.yml"
+				}
+			}`)
+		default:
+			t.Errorf("Request method: %v, want %v", r.Method, "PUT or GET")
+		}
 	})
 	mux.HandleFunc("/download/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
@@ -205,6 +222,7 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 		    }
 		  }`)
 	})
+
 	input := &github.NewPullRequest{
 		Title: github.String("Update workflows by ghconfig"),
 		Head:  github.String("ghconfig/workflows/fixed_id"),
