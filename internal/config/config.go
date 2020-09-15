@@ -88,6 +88,7 @@ type (
 		Files             []*RepositoryFileUpdate
 		RepositoryOptions *RepositoryUpdateOptions
 		TemplateVars      TemplateVars
+		PullRequestURL    string
 	}
 
 	RepositoryFileUpdate struct {

@@ -19,6 +19,7 @@ import (
 	"github.com/cheynewallace/tabby"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/google/go-github/v32/github"
+	"github.com/pieterclaerhout/go-waitgroup"
 	"gopkg.in/yaml.v2"
 )
 
@@ -94,8 +95,6 @@ func NewSyncCmd(globalOptions *config.Config) error {
 		return err
 	}
 
-	packages := []*config.RepositoryUpdate{}
-
 	s = spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 	s.Suffix = " Update workflow files and create pull requests..."
 
@@ -104,106 +103,121 @@ func NewSyncCmd(globalOptions *config.Config) error {
 	t := tabby.New()
 	t.AddHeader("Repository", "Files", "Url")
 
+	wg := waitgroup.NewWaitGroup(3)
+	var results = make(chan *config.RepositoryUpdate, len(targetRepos))
+
 	for _, repoFullName := range targetRepos {
-		repo := getRepoByName(repos, repoFullName)
-		branchName := globalOptions.BaseBranch
+		wg.Add(func() {
+			repo := getRepoByName(repos, repoFullName)
+			branchName := globalOptions.BaseBranch
 
-		ctx := log.WithFields(log.Fields{
-			"repository": repoFullName,
-		})
+			ctx := log.WithFields(log.Fields{
+				"repository": repoFullName,
+			})
 
-		if globalOptions.CreatePR {
-			branchName = fmt.Sprintf(config.BranchNamePattern, globalOptions.Sid.MustGenerate())
-		}
+			if globalOptions.CreatePR {
+				branchName = fmt.Sprintf(config.BranchNamePattern, globalOptions.Sid.MustGenerate())
+			}
 
-		updateOptions := &config.RepositoryUpdateOptions{
-			Owner:       *repo.GetOwner().Login,
-			Repo:        repo.GetName(),
-			BaseRef:     globalOptions.BaseBranch,
-			Branch:      branchName,
-			PRBranchRef: "refs/heads/" + branchName,
-		}
+			updateOptions := &config.RepositoryUpdateOptions{
+				Owner:       *repo.GetOwner().Login,
+				Repo:        repo.GetName(),
+				BaseRef:     globalOptions.BaseBranch,
+				Branch:      branchName,
+				PRBranchRef: "refs/heads/" + branchName,
+			}
 
-		update := &config.RepositoryUpdate{
-			RepositoryOptions: updateOptions,
-			Repository:        repo,
-			TemplateVars:      map[string]interface{}{"Repo": repo},
-		}
+			update := &config.RepositoryUpdate{
+				RepositoryOptions: updateOptions,
+				Repository:        repo,
+				TemplateVars:      map[string]interface{}{"Repo": repo},
+			}
 
-		files, err := prepareWorkflows(globalOptions, update, templates)
-		if err != nil {
-			ctx.WithError(err).Error("could not prepare workflow files")
-			continue
-		}
-		update.Files = append(update.Files, files...)
-
-		files, err = preparePatches(globalOptions, update, patches)
-		if err != nil {
-			ctx.WithError(err).Error("could not prepare patch files")
-			continue
-		}
-		update.Files = append(update.Files, files...)
-
-		files, err = prepareHealthFiles(globalOptions, update, healthFiles)
-		if err != nil {
-			ctx.WithError(err).Error("could not prepare health files")
-			continue
-		}
-		update.Files = append(update.Files, files...)
-
-		if dependabotTemplate != nil {
-			fileUpdate, err := prepareDependabot(globalOptions, update, dependabotTemplate)
+			files, err := prepareWorkflows(globalOptions, update, templates)
 			if err != nil {
-				log.WithError(err).Error("could not prepare dependabot file")
-				continue
+				ctx.WithError(err).Error("could not prepare workflow files")
+				return
 			}
-			update.Files = append(update.Files, fileUpdate)
-		}
+			update.Files = append(update.Files, files...)
 
-		if len(update.Files) > 0 {
-			pullRequestURL := ""
-			if !globalOptions.DryRun {
-				if globalOptions.CreatePR {
-					pullRequestURL, err = helper.CreatePR(globalOptions, update)
-					if err != nil {
-						ctx.WithError(err).Error("could not create PR with changes")
-						continue
-					}
-				} else {
-					// update files directly on the base branch
-					err := helper.UpdateRepositoryFiles(globalOptions, update.RepositoryOptions, update.Files)
-					if err != nil {
-						ctx.WithError(err).Error("could not update files on remote")
-						continue
-					}
+			files, err = preparePatches(globalOptions, update, patches)
+			if err != nil {
+				ctx.WithError(err).Error("could not prepare patch files")
+				return
+			}
+			update.Files = append(update.Files, files...)
+
+			files, err = prepareHealthFiles(globalOptions, update, healthFiles)
+			if err != nil {
+				ctx.WithError(err).Error("could not prepare health files")
+				return
+			}
+			update.Files = append(update.Files, files...)
+
+			if dependabotTemplate != nil {
+				fileUpdate, err := prepareDependabot(globalOptions, update, dependabotTemplate)
+				if err != nil {
+					log.WithError(err).Error("could not prepare dependabot file")
+					return
 				}
+				update.Files = append(update.Files, fileUpdate)
 			}
 
-			// build table for cli output
-			for i, file := range update.Files {
-				if i == 0 {
-					url := ""
-					if pullRequestURL != "" {
-						url = pullRequestURL
+			if len(update.Files) > 0 {
+				if !globalOptions.DryRun {
+					if globalOptions.CreatePR {
+						pullRequestURL, err := helper.CreatePR(globalOptions, update)
+						if err != nil {
+							ctx.WithError(err).Error("could not create PR with changes")
+							return
+						}
+						update.PullRequestURL = pullRequestURL
 					} else {
-						url = file.RepositoryUpdateOptions.URL
+						// update files directly on the base branch
+						err := helper.UpdateRepositoryFiles(globalOptions, update.RepositoryOptions, update.Files)
+						if err != nil {
+							ctx.WithError(err).Error("could not update files on remote")
+							return
+						}
 					}
-					t.AddLine(repo.GetFullName(), file.RepositoryUpdateOptions.DisplayName, url)
-				} else {
-					url := ""
-					if pullRequestURL == "" {
-						url = file.RepositoryUpdateOptions.URL
-					}
-					t.AddLine("", file.RepositoryUpdateOptions.DisplayName, url)
 				}
 			}
 
-		}
-
-		packages = append(packages, update)
+			results <- update
+		})
 	}
 
+	wg.Wait()
+	close(results)
+
 	s.Stop()
+
+	updates := []*config.RepositoryUpdate{}
+	for pkg := range results {
+		updates = append(updates, pkg)
+	}
+
+	// build table for cli output
+	for _, pkg := range updates {
+		for i, file := range pkg.Files {
+			if i == 0 {
+				url := ""
+				if pkg.PullRequestURL != "" {
+					url = pkg.PullRequestURL
+				} else {
+					url = file.RepositoryUpdateOptions.URL
+				}
+				t.AddLine(pkg.Repository.GetFullName(), file.RepositoryUpdateOptions.DisplayName, url)
+			} else {
+				url := ""
+				if pkg.PullRequestURL == "" {
+					url = file.RepositoryUpdateOptions.URL
+				}
+				t.AddLine("", file.RepositoryUpdateOptions.DisplayName, url)
+			}
+		}
+	}
+
 	fmt.Println()
 	t.Print()
 
@@ -214,7 +228,7 @@ func NewSyncCmd(globalOptions *config.Config) error {
 		}
 		defer file.Close()
 
-		for _, wr := range packages {
+		for _, wr := range updates {
 			for _, f := range wr.Files {
 				if f.Workflow != nil {
 					y, err := yaml.Marshal(f.Workflow)
