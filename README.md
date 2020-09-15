@@ -43,7 +43,12 @@ This directory follows the same structure as your `.github` folder. All files ar
 
 ```
 $ ghconfig sync
-? Please select all target repositories. StarpTech/shikaka
+
+? Please select all repositories:  [Use arrows to move, space to select, <right> to all, <left> to none, type to filter]
+  [ ]  StarpTech/profiling-nodejs
+  [ ]  StarpTech/go-web
+  [ ]  StarpTech/next-localization
+> [X]  StarpTech/shikaka
 
 Repository         Files                 Url
 ----------         -----                 ---
