@@ -30,7 +30,7 @@ single repository manually. Ghconfig helps you to automate such tasks.
 )
 
 func main() {
-	app.Version("0.7.0")
+	app.Version("0.8.0")
 	_, err := app.Parse(os.Args[1:])
 	if err != nil {
 		log.WithError(err).Fatalf("could not parse args")
