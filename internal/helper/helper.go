@@ -266,7 +266,7 @@ func CreatePR(opts *config.Config, intent *config.RepositoryUpdate) (string, err
 func UpdateRepositoryFiles(opts *config.Config, updateOptions *config.RepositoryUpdateOptions, files []*config.RepositoryFileUpdate) error {
 	for _, file := range files {
 		// commit message
-		commitMsg := "Update workflow files by ghconfig"
+		commitMsg := fmt.Sprintf("Update %v file by ghconfig", file.RepositoryUpdateOptions.DisplayName)
 
 		rr, _, err := opts.GithubClient.Repositories.UpdateFile(
 			opts.Context,
