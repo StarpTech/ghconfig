@@ -130,11 +130,26 @@ func NewSyncCmd(globalOptions *config.Config) error {
 			TemplateVars:      map[string]interface{}{"Repo": repo},
 		}
 
-		files, err := prepareFileUpdates(globalOptions, update, templates, patches, healthFiles)
+		files, err := prepareWorkflows(globalOptions, update, templates)
 		if err != nil {
 			ctx.WithError(err).Error("could not prepare workflow files")
 			continue
 		}
+		update.Files = append(update.Files, files...)
+
+		files, err = preparePatches(globalOptions, update, patches)
+		if err != nil {
+			ctx.WithError(err).Error("could not prepare patch files")
+			continue
+		}
+		update.Files = append(update.Files, files...)
+
+		files, err = prepareHealthFiles(globalOptions, update, healthFiles)
+		if err != nil {
+			ctx.WithError(err).Error("could not prepare health files")
+			continue
+		}
+		update.Files = append(update.Files, files...)
 
 		if dependabotTemplate != nil {
 			fileUpdate, err := prepareDependabot(globalOptions, update, dependabotTemplate)
@@ -142,8 +157,7 @@ func NewSyncCmd(globalOptions *config.Config) error {
 				log.WithError(err).Error("could not prepare dependabot file")
 				continue
 			}
-
-			update.Files = append(files, fileUpdate)
+			update.Files = append(update.Files, fileUpdate)
 		}
 
 		if len(update.Files) > 0 {
@@ -243,78 +257,58 @@ func NewSyncCmd(globalOptions *config.Config) error {
 	return nil
 }
 
-func prepareFileUpdates(
-	opts *config.Config,
-	update *config.RepositoryUpdate,
-	templates []*config.WorkflowTemplate,
-	patches []*config.PatchData,
-	healthFiles []*config.GithubHealthFile) ([]*config.RepositoryFileUpdate, error) {
-
-	directory := path.Join(config.GithubConfigBaseDir, "workflows")
-	_, dirContent, resp, err := opts.GithubClient.Repositories.GetContents(
-		opts.Context,
-		update.RepositoryOptions.Owner,
-		update.RepositoryOptions.Repo,
-		directory,
-		&github.RepositoryContentGetOptions{
-			Ref: update.RepositoryOptions.BaseRef,
-		},
-	)
-
+func prepareHealthFiles(opts *config.Config, update *config.RepositoryUpdate, healthFiles []*config.GithubHealthFile) ([]*config.RepositoryFileUpdate, error) {
 	files := []*config.RepositoryFileUpdate{}
 
-	if err != nil && resp.StatusCode != 404 {
-		log.Debugf("workflow directory %v doesn't exist on remote", directory)
-		return nil, err
-	}
-
-	for _, workflowTemplate := range templates {
-		var file *config.RepositoryFileUpdate
-
-		y, err := yaml.Marshal(workflowTemplate.Workflow)
+	for _, healthFile := range healthFiles {
+		file := &config.RepositoryFileUpdate{}
+		remoteFilePath := path.Join(config.GithubConfigBaseDir, healthFile.Filename)
+		content, _, resp, err := opts.GithubClient.Repositories.GetContents(
+			opts.Context,
+			update.RepositoryOptions.Owner,
+			update.RepositoryOptions.Repo,
+			remoteFilePath,
+			&github.RepositoryContentGetOptions{
+				Ref: update.RepositoryOptions.BaseRef,
+			},
+		)
 		if err != nil {
-			log.WithError(err).Error("could not marshal template")
-			continue
+			if resp.StatusCode == 404 {
+				log.Debugf("health file %v doesn't exist", remoteFilePath)
+				file.RepositoryUpdateOptions = &config.RepositoryFileUpdateOptions{}
+				file.RepositoryUpdateOptions.Filename = healthFile.Filename
+				file.RepositoryUpdateOptions.DisplayName = healthFile.Filename
+				file.RepositoryUpdateOptions.FileContent = healthFile.FileContent
+				file.RepositoryUpdateOptions.Path = remoteFilePath
+				files = append(files, file)
+				continue
+			}
+			log.WithError(err).Error("could not list health file")
+			return nil, err
 		}
 
-		bytesCache, err := helper.ExecuteTemplate(workflowTemplate.Filename, string(y), update.TemplateVars)
+		bytesCache, err := helper.ExecuteTemplate(healthFile.Filename, string(*healthFile.FileContent), update.TemplateVars)
 		if err != nil {
 			log.WithError(err).Error("could not template")
 			continue
 		}
 
-		proceedTemplate := gh.GithubWorkflow{}
-		fileContent := bytesCache.Bytes()
-		err = yaml.Unmarshal(fileContent, &proceedTemplate)
-		if err != nil {
-			log.WithError(err).Error("could unmarshal template")
-			continue
-		}
+		newFileContent := bytesCache.Bytes()
 
-		for _, content := range dirContent {
-			if content.GetName() == workflowTemplate.Filename {
-				file = &config.RepositoryFileUpdate{}
-				file.RepositoryUpdateOptions = &config.RepositoryFileUpdateOptions{}
-				file.RepositoryUpdateOptions.Filename = content.GetName()
-				file.RepositoryUpdateOptions.DisplayName = file.RepositoryUpdateOptions.Filename
-				file.Workflow = &proceedTemplate
-				file.RepositoryUpdateOptions.FileContent = &fileContent
-				file.RepositoryUpdateOptions.Path = content.GetPath()
-				file.RepositoryUpdateOptions.SHA = content.GetSHA()
-			}
-		}
-		if file == nil {
-			file = &config.RepositoryFileUpdate{}
-			file.RepositoryUpdateOptions = &config.RepositoryFileUpdateOptions{}
-			file.RepositoryUpdateOptions.Filename = workflowTemplate.Filename
-			file.RepositoryUpdateOptions.DisplayName = workflowTemplate.Filename
-			file.Workflow = &proceedTemplate
-			file.RepositoryUpdateOptions.FileContent = &fileContent
-			file.RepositoryUpdateOptions.Path = workflowTemplate.RepositoryPath
-		}
+		file.RepositoryUpdateOptions = &config.RepositoryFileUpdateOptions{}
+		file.RepositoryUpdateOptions.Filename = content.GetName()
+		file.RepositoryUpdateOptions.DisplayName = content.GetName()
+		file.RepositoryUpdateOptions.FileContent = &newFileContent
+		file.RepositoryUpdateOptions.Path = content.GetPath()
+		file.RepositoryUpdateOptions.SHA = content.GetSHA()
 
 		files = append(files, file)
 	}
+	return files, nil
+}
+
+func preparePatches(opts *config.Config, update *config.RepositoryUpdate, patches []*config.PatchData) ([]*config.RepositoryFileUpdate, error) {
+	files := []*config.RepositoryFileUpdate{}
 
 	for _, patch := range patches {
 		remoteFilePath := path.Join(config.GithubConfigBaseDir, "workflows", patch.Filename)
@@ -422,59 +416,80 @@ func prepareFileUpdates(
 		files = append(files, file)
 
 	}
+	return files, nil
+}
 
-	for _, healthFile := range healthFiles {
-		file := &config.RepositoryFileUpdate{}
-		remoteFilePath := path.Join(config.GithubConfigBaseDir, healthFile.Filename)
-		content, _, resp, err := opts.GithubClient.Repositories.GetContents(
-			opts.Context,
-			update.RepositoryOptions.Owner,
-			update.RepositoryOptions.Repo,
-			remoteFilePath,
-			&github.RepositoryContentGetOptions{
-				Ref: update.RepositoryOptions.BaseRef,
-			},
-		)
+func prepareWorkflows(opts *config.Config, update *config.RepositoryUpdate, templates []*config.WorkflowTemplate) ([]*config.RepositoryFileUpdate, error) {
+	directory := path.Join(config.GithubConfigBaseDir, "workflows")
+	_, dirContent, resp, err := opts.GithubClient.Repositories.GetContents(
+		opts.Context,
+		update.RepositoryOptions.Owner,
+		update.RepositoryOptions.Repo,
+		directory,
+		&github.RepositoryContentGetOptions{
+			Ref: update.RepositoryOptions.BaseRef,
+		},
+	)
+
+	files := []*config.RepositoryFileUpdate{}
+
+	if err != nil && resp.StatusCode != 404 {
+		log.Debugf("workflow directory %v doesn't exist on remote", directory)
+		return nil, err
+	}
+
+	for _, workflowTemplate := range templates {
+		var file *config.RepositoryFileUpdate
+
+		y, err := yaml.Marshal(workflowTemplate.Workflow)
 		if err != nil {
-			if resp.StatusCode == 404 {
-				log.Debugf("health file %v doesn't exist", remoteFilePath)
-				file.RepositoryUpdateOptions = &config.RepositoryFileUpdateOptions{}
-				file.RepositoryUpdateOptions.Filename = healthFile.Filename
-				file.RepositoryUpdateOptions.DisplayName = healthFile.Filename
-				file.RepositoryUpdateOptions.FileContent = healthFile.FileContent
-				file.RepositoryUpdateOptions.Path = remoteFilePath
-				files = append(files, file)
-				continue
-			}
-			log.WithError(err).Error("could not list health file")
-			return nil, err
+			log.WithError(err).Error("could not marshal template")
+			continue
 		}
 
-		bytesCache, err := helper.ExecuteTemplate(healthFile.Filename, string(*healthFile.FileContent), update.TemplateVars)
+		bytesCache, err := helper.ExecuteTemplate(workflowTemplate.Filename, string(y), update.TemplateVars)
 		if err != nil {
 			log.WithError(err).Error("could not template")
 			continue
 		}
 
-		newFileContent := bytesCache.Bytes()
+		proceedTemplate := gh.GithubWorkflow{}
+		fileContent := bytesCache.Bytes()
+		err = yaml.Unmarshal(fileContent, &proceedTemplate)
+		if err != nil {
+			log.WithError(err).Error("could unmarshal template")
+			continue
+		}
 
-		file.RepositoryUpdateOptions = &config.RepositoryFileUpdateOptions{}
-		file.RepositoryUpdateOptions.Filename = content.GetName()
-		file.RepositoryUpdateOptions.DisplayName = content.GetName()
-		file.RepositoryUpdateOptions.FileContent = &newFileContent
-		file.RepositoryUpdateOptions.Path = content.GetPath()
-		file.RepositoryUpdateOptions.SHA = content.GetSHA()
+		for _, content := range dirContent {
+			if content.GetName() == workflowTemplate.Filename {
+				file = &config.RepositoryFileUpdate{}
+				file.RepositoryUpdateOptions = &config.RepositoryFileUpdateOptions{}
+				file.RepositoryUpdateOptions.Filename = content.GetName()
+				file.RepositoryUpdateOptions.DisplayName = file.RepositoryUpdateOptions.Filename
+				file.Workflow = &proceedTemplate
+				file.RepositoryUpdateOptions.FileContent = &fileContent
+				file.RepositoryUpdateOptions.Path = content.GetPath()
+				file.RepositoryUpdateOptions.SHA = content.GetSHA()
+			}
+		}
+		if file == nil {
+			file = &config.RepositoryFileUpdate{}
+			file.RepositoryUpdateOptions = &config.RepositoryFileUpdateOptions{}
+			file.RepositoryUpdateOptions.Filename = workflowTemplate.Filename
+			file.RepositoryUpdateOptions.DisplayName = workflowTemplate.Filename
+			file.Workflow = &proceedTemplate
+			file.RepositoryUpdateOptions.FileContent = &fileContent
+			file.RepositoryUpdateOptions.Path = workflowTemplate.RepositoryPath
+		}
 
 		files = append(files, file)
 	}
-
 	return files, nil
 }
 
 func prepareDependabot(
-	opts *config.Config,
-	update *config.RepositoryUpdate,
-	dependabotTemplate *config.DependabotTemplate) (*config.RepositoryFileUpdate, error) {
+	opts *config.Config, update *config.RepositoryUpdate, dependabotTemplate *config.DependabotTemplate) (*config.RepositoryFileUpdate, error) {
 
 	y, err := yaml.Marshal(dependabotTemplate.Dependabot)
 	if err != nil {
