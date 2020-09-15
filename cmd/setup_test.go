@@ -80,7 +80,10 @@ func testFormValues(t *testing.T, r *http.Request, values values) {
 		want.Set(k, v)
 	}
 
-	r.ParseForm()
+	err := r.ParseForm()
+	if err != nil {
+		t.Error("ParseForm")
+	}
 	if got := r.Form; !reflect.DeepEqual(got, want) {
 		t.Errorf("Request parameters: %v, want %v", got, want)
 	}

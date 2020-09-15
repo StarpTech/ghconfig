@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"ghconfig/cmd"
-	"ghconfig/internal"
+	"ghconfig/internal/config"
 	"os"
 
 	"github.com/apex/log"
@@ -24,15 +24,18 @@ single repository manually. Ghconfig helps you to automate such tasks.
 	dryRun          = app.Flag("dry-run", "Runs the command without side-effects.").Bool()
 	baseBranch      = app.Flag("base-branch", "The base branch.").Default("master").Short('b').String()
 	githubToken     = app.Flag("github-token", "Your personal github access token.").OverrideDefaultFromEnvar("GITHUB_TOKEN").Short('t').Required().String()
-	worfklowCommand = app.Command("workflow", "Generates new workflows files based on the local templates and create a PR (draft) in the repository with the changes.")
-	createPR        = worfklowCommand.Flag("create-pr", "Create a new branch and PR for all changes.").Default("true").Short('p').Bool()
-	workflowRoot    = worfklowCommand.Flag("root-dir", "Overwrites the workflow directory inside .ghconfig.").Default("workflows").Short('r').String()
-	repositoryQuery = worfklowCommand.Flag("query", "Search by repository name.").Short('f').String()
+	syncCommand     = app.Command("sync", "Synchronize all configuration files.")
+	createPR        = syncCommand.Flag("create-pr", "Create a new branch and PR for all changes.").Default("true").Short('p').Bool()
+	repositoryQuery = syncCommand.Flag("query", "Search by repository name.").Short('f').String()
 )
 
 func main() {
 	app.Version("0.7.0")
-	app.Parse(os.Args[1:])
+	_, err := app.Parse(os.Args[1:])
+	if err != nil {
+		log.WithError(err).Fatalf("could not parse args")
+	}
+
 	log.SetHandler(cli.Default)
 	log.SetLevel(log.InfoLevel)
 
@@ -53,7 +56,7 @@ func main() {
 		log.WithError(err).Fatalf("could not get wd")
 	}
 
-	cfg := &internal.Config{
+	cfg := &config.Config{
 		GithubClient:    client,
 		Context:         ctx,
 		DryRun:          *dryRun,
@@ -61,12 +64,11 @@ func main() {
 		Sid:             sid,
 		CreatePR:        *createPR,
 		RepositoryQuery: *repositoryQuery,
-		WorkflowRoot:    *workflowRoot,
 		RootDir:         pDir,
 	}
 
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
-	case worfklowCommand.FullCommand():
+	case syncCommand.FullCommand():
 		if err := cmd.NewSyncCmd(cfg); err != nil {
 			log.WithError(err).Fatalf("sync command error")
 		}

@@ -37,12 +37,12 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository. Check ou
 │   └── SUPPORT.md
 ```
 
-This directory follows the same structure as your `.github` folder. All `yaml` files are handled as a [Go template](https://golang.org/pkg/text/template/) and in them you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and additionally to all utility functions of [sprig](http://masterminds.github.io/sprig/).
+This directory follows the same structure as your `.github` folder. All `yaml` and `md` files are handled as a [Go template](https://golang.org/pkg/text/template/) and in them you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and additionally to all utility functions of [sprig](http://masterminds.github.io/sprig/).
 
 ## Example:
 
 ```
-$ ghconfig workflow
+$ ghconfig sync
 ? Please select all target repositories. StarpTech/shikaka
 
 Repository         Files               Url
@@ -58,12 +58,12 @@ We'd love to hear your feedback about ghconfig. If you spot bugs or have feature
 
 ## Usage
 
-- `ghconfig workflow`
-- `ghconfig workflow --no-create-pr`
-- `ghconfig workflow --query=MyOrganisation`
-- `ghconfig workflow --base-branch=master`
-- `ghconfig workflow --root-dir=different-workflow-dir`
-- `ghconfig workflow --dry-run`
+- `ghconfig sync`
+- `ghconfig sync --no-create-pr`
+- `ghconfig sync --query=MyOrganisation`
+- `ghconfig sync --base-branch=master`
+- `ghconfig sync --root-dir=different-ghconfig-root`
+- `ghconfig sync --dry-run`
 
 ## Installation
 

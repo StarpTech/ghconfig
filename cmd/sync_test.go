@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"ghconfig/internal"
+	"ghconfig/internal/config"
 	"net/http"
 	"reflect"
 	"testing"
@@ -14,7 +14,7 @@ import (
 	"github.com/google/go-github/v32/github"
 )
 
-func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
+func TestSync_SingleWorkflowUpdate(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
@@ -83,7 +83,7 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 		  }`)
 	})
 	input := &github.NewPullRequest{
-		Title: github.String("Update workflows by ghconfig"),
+		Title: github.String("Synchronize (.github) configurations by ghconfig"),
 		Head:  github.String("ghconfig/workflows/fixed_id"),
 		Base:  github.String("master"),
 		Draft: github.Bool(true),
@@ -117,7 +117,7 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 	ctx := context.Background()
 	sid := testIDGenerator{}
 
-	cfg := &internal.Config{
+	cfg := &config.Config{
 		GithubClient:    client,
 		Context:         ctx,
 		DryRun:          false,
@@ -125,27 +125,153 @@ func TestSync_SimpleSingleWorkflowUpdate(t *testing.T) {
 		Sid:             sid,
 		CreatePR:        true,
 		RepositoryQuery: "o",
-		WorkflowRoot:    "workflows",
 		RootDir:         "../test/fixture/simple-workflow",
 	}
 
 	h := memory.New()
 	log.SetHandler(h)
 
-	getList := func(reposNames []string) []string {
-		return []string{"o/r"}
-	}
-	err := NewSyncCmd(cfg, WithRepositorySelector(getList))
+	stub := StubRepositorySelection([]string{"o/r"})
+	defer stub()
+
+	err := NewSyncCmd(cfg)
 	if err != nil {
-		t.Fatalf("could not execute sync command, %v", err)
+		t.Fatalf("could not execute command, %v", err)
 	}
 
-	if len(h.Entries) > 0 {
-		t.Error("stderr should be empty")
+	for _, entry := range h.Entries {
+		if entry.Logger.Level >= log.ErrorLevel {
+			t.Error("stderr should be empty")
+		}
 	}
 }
 
-func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
+func TestSync_WorkflowEmptyWorkflowFolderRemote(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `{"id":1, "Login": "o"}`)
+	})
+	mux.HandleFunc("/search/repositories", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testFormValues(t, r, values{
+			"q":        "o in:name",
+			"page":     "1",
+			"per_page": "120",
+		})
+
+		fmt.Fprint(w, `{"total_count": 1, "incomplete_results": false, "items": [{"id":1, "name": "r", "full_name": "o/r", "owner": {"id":1, "Login": "o"}}]}`)
+	})
+	mux.HandleFunc("/repos/o/r/contents/.github/workflows", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `[]`)
+	})
+	mux.HandleFunc("/repos/o/r/git/matching-refs/heads/master", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `
+		  [
+		    {
+		      "ref": "refs/heads/master",
+		      "url": "https://api.github.com/repos/o/r/git/refs/heads/master",
+		      "object": {
+		        "type": "commit",
+		        "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+		        "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		      }
+		    }
+		  ]`)
+	})
+
+	args := &createRefRequest{
+		Ref: github.String("refs/heads/ghconfig/workflows/fixed_id"),
+		SHA: github.String("aa218f56b14c9653891f9e74264a383fa43fefbd"),
+	}
+	mux.HandleFunc("/repos/o/r/git/refs", func(w http.ResponseWriter, r *http.Request) {
+		v := new(createRefRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
+		testMethod(t, r, "POST")
+		if !reflect.DeepEqual(v, args) {
+			t.Errorf("Request body = %+v, want %+v", v, args)
+		}
+		fmt.Fprint(w, `
+		  {
+		    "ref": "refs/heads/ghconfig/workflows/fixed_id",
+		    "url": "https://api.github.com/repos/o/r/git/refs/heads/ghconfig/workflows/fixed_id",
+		    "object": {
+		      "type": "commit",
+		      "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+		      "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		    }
+		  }`)
+	})
+	input := &github.NewPullRequest{
+		Title: github.String("Synchronize (.github) configurations by ghconfig"),
+		Head:  github.String("ghconfig/workflows/fixed_id"),
+		Base:  github.String("master"),
+		Draft: github.Bool(true),
+	}
+
+	mux.HandleFunc("/repos/o/r/pulls", func(w http.ResponseWriter, r *http.Request) {
+		v := new(github.NewPullRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
+		testMethod(t, r, "POST")
+		if !reflect.DeepEqual(v, input) {
+			t.Errorf("Request body = %+v, want %+v", v, input)
+		}
+
+		fmt.Fprint(w, `{"number":1, "html_url": "https://github.com/o/r/pull/20"}`)
+	})
+	mux.HandleFunc("/repos/o/r/contents/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "PUT")
+		fmt.Fprint(w, `{
+			"content":{
+				"name":"p"
+			},
+			"commit":{
+				"message":"m",
+				"sha":"f5f369044773ff9c6383c087466d12adb6fa0828",
+				"html_url": "https://github.com/o/r/blob/master/.github/workflows/nodejs.yml"
+			}
+		}`)
+	})
+
+	ctx := context.Background()
+	sid := testIDGenerator{}
+
+	cfg := &config.Config{
+		GithubClient:    client,
+		Context:         ctx,
+		DryRun:          false,
+		BaseBranch:      "master",
+		Sid:             sid,
+		CreatePR:        true,
+		RepositoryQuery: "o",
+		RootDir:         "../test/fixture/simple-workflow",
+	}
+
+	h := memory.New()
+	log.SetHandler(h)
+
+	stub := StubRepositorySelection([]string{"o/r"})
+	defer stub()
+
+	err := NewSyncCmd(cfg)
+	if err != nil {
+		t.Fatalf("could not execute command, %v", err)
+	}
+
+	for _, entry := range h.Entries {
+		if entry.Logger.Level >= log.ErrorLevel {
+			t.Error("stderr should be empty")
+		}
+	}
+}
+
+func TestSync_SinglePatch(t *testing.T) {
 	client, mux, serverURL, teardown := setup()
 	defer teardown()
 
@@ -233,7 +359,7 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 	})
 
 	input := &github.NewPullRequest{
-		Title: github.String("Update workflows by ghconfig"),
+		Title: github.String("Synchronize (.github) configurations by ghconfig"),
 		Head:  github.String("ghconfig/workflows/fixed_id"),
 		Base:  github.String("master"),
 		Draft: github.Bool(true),
@@ -254,7 +380,7 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 	ctx := context.Background()
 	sid := testIDGenerator{}
 
-	cfg := &internal.Config{
+	cfg := &config.Config{
 		GithubClient:    client,
 		Context:         ctx,
 		DryRun:          false,
@@ -262,22 +388,561 @@ func TestSync_SimpleSinglePatchUpdate(t *testing.T) {
 		Sid:             sid,
 		CreatePR:        true,
 		RepositoryQuery: "o",
-		WorkflowRoot:    "workflows",
 		RootDir:         "../test/fixture/simple-patch",
 	}
 
 	h := memory.New()
 	log.SetHandler(h)
 
-	getList := func(reposNames []string) []string {
-		return []string{"o/r"}
-	}
-	err := NewSyncCmd(cfg, WithRepositorySelector(getList))
+	stub := StubRepositorySelection([]string{"o/r"})
+	defer stub()
+
+	err := NewSyncCmd(cfg)
 	if err != nil {
-		t.Fatalf("could not execute sync command, %v", err)
+		t.Fatalf("could not execute command, %v", err)
 	}
 
-	if len(h.Entries) > 0 {
-		t.Error("stderr should be empty")
+	for _, entry := range h.Entries {
+		if entry.Logger.Level >= log.ErrorLevel {
+			t.Error("stderr should be empty")
+		}
+	}
+}
+
+func TestSync_SingleDependabot(t *testing.T) {
+	client, mux, serverURL, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `{"id":1, "Login": "o"}`)
+	})
+	mux.HandleFunc("/search/repositories", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testFormValues(t, r, values{
+			"q":        "o in:name",
+			"page":     "1",
+			"per_page": "120",
+		})
+
+		fmt.Fprint(w, `{"total_count": 1, "incomplete_results": false, "items": [{"id":1, "name": "r", "full_name": "o/r", "owner": {"id":1, "Login": "o"}}]}`)
+	})
+	mux.HandleFunc("/repos/o/r/contents/.github/workflows", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `[]`)
+	})
+	mux.HandleFunc("/repos/o/r/git/matching-refs/heads/master", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `
+		  [
+		    {
+		      "ref": "refs/heads/master",
+		      "url": "https://api.github.com/repos/o/r/git/refs/heads/master",
+		      "object": {
+		        "type": "commit",
+		        "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+		        "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		      }
+		    }
+		  ]`)
+	})
+
+	args := &createRefRequest{
+		Ref: github.String("refs/heads/ghconfig/workflows/fixed_id"),
+		SHA: github.String("aa218f56b14c9653891f9e74264a383fa43fefbd"),
+	}
+	mux.HandleFunc("/repos/o/r/git/refs", func(w http.ResponseWriter, r *http.Request) {
+		v := new(createRefRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
+		testMethod(t, r, "POST")
+		if !reflect.DeepEqual(v, args) {
+			t.Errorf("Request body = %+v, want %+v", v, args)
+		}
+		fmt.Fprint(w, `
+		  {
+		    "ref": "refs/heads/ghconfig/workflows/fixed_id",
+		    "url": "https://api.github.com/repos/o/r/git/refs/heads/ghconfig/workflows/fixed_id",
+		    "object": {
+		      "type": "commit",
+		      "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+		      "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		    }
+		  }`)
+	})
+	input := &github.NewPullRequest{
+		Title: github.String("Synchronize (.github) configurations by ghconfig"),
+		Head:  github.String("ghconfig/workflows/fixed_id"),
+		Base:  github.String("master"),
+		Draft: github.Bool(true),
+	}
+
+	mux.HandleFunc("/repos/o/r/pulls", func(w http.ResponseWriter, r *http.Request) {
+		v := new(github.NewPullRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
+		testMethod(t, r, "POST")
+		if !reflect.DeepEqual(v, input) {
+			t.Errorf("Request body = %+v, want %+v", v, input)
+		}
+
+		fmt.Fprint(w, `{"number":1, "html_url": "https://github.com/o/r/pull/20"}`)
+	})
+	mux.HandleFunc("/repos/o/r/contents/.github/dependabot.yml", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			fmt.Fprint(w, `{
+				"type": "file",
+				"name": "f",
+				"path": ".github/dependabot.yml",
+				"download_url": "`+serverURL+baseURLPath+`/download/.github/dependabot.yml"
+			  }`)
+		case "PUT":
+			fmt.Fprint(w, `
+			{
+				"content":{
+					"name":"CI"
+				},
+				"commit":{
+					"message":"m",
+					"sha":"f5f369044773ff9c6383c087466d12adb6fa0828",
+					"html_url": "https://github.com/o/r/blob/master/.github/dependabot.yml"
+				}
+			}`)
+		default:
+			t.Errorf("Request method: %v, want %v", r.Method, "PUT or GET")
+		}
+	})
+
+	ctx := context.Background()
+	sid := testIDGenerator{}
+
+	cfg := &config.Config{
+		GithubClient:    client,
+		Context:         ctx,
+		DryRun:          false,
+		BaseBranch:      "master",
+		Sid:             sid,
+		CreatePR:        true,
+		RepositoryQuery: "o",
+		RootDir:         "../test/fixture/simple-dependabot",
+	}
+
+	h := memory.New()
+	log.SetHandler(h)
+
+	stub := StubRepositorySelection([]string{"o/r"})
+	defer stub()
+
+	err := NewSyncCmd(cfg)
+	if err != nil {
+		t.Fatalf("could not execute command, %v", err)
+	}
+
+	for _, entry := range h.Entries {
+		if entry.Logger.Level >= log.ErrorLevel {
+			t.Error("stderr should be empty")
+		}
+	}
+}
+
+func TestSync_DependabotNotFoundOnRemote(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `{"id":1, "Login": "o"}`)
+	})
+	mux.HandleFunc("/search/repositories", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testFormValues(t, r, values{
+			"q":        "o in:name",
+			"page":     "1",
+			"per_page": "120",
+		})
+
+		fmt.Fprint(w, `{"total_count": 1, "incomplete_results": false, "items": [{"id":1, "name": "r", "full_name": "o/r", "owner": {"id":1, "Login": "o"}}]}`)
+	})
+	mux.HandleFunc("/repos/o/r/contents/.github/workflows", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `[]`)
+	})
+	mux.HandleFunc("/repos/o/r/git/matching-refs/heads/master", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `
+		  [
+		    {
+		      "ref": "refs/heads/master",
+		      "url": "https://api.github.com/repos/o/r/git/refs/heads/master",
+		      "object": {
+		        "type": "commit",
+		        "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+		        "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		      }
+		    }
+		  ]`)
+	})
+
+	args := &createRefRequest{
+		Ref: github.String("refs/heads/ghconfig/workflows/fixed_id"),
+		SHA: github.String("aa218f56b14c9653891f9e74264a383fa43fefbd"),
+	}
+	mux.HandleFunc("/repos/o/r/git/refs", func(w http.ResponseWriter, r *http.Request) {
+		v := new(createRefRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
+		testMethod(t, r, "POST")
+		if !reflect.DeepEqual(v, args) {
+			t.Errorf("Request body = %+v, want %+v", v, args)
+		}
+		fmt.Fprint(w, `
+		  {
+		    "ref": "refs/heads/ghconfig/workflows/fixed_id",
+		    "url": "https://api.github.com/repos/o/r/git/refs/heads/ghconfig/workflows/fixed_id",
+		    "object": {
+		      "type": "commit",
+		      "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+		      "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		    }
+		  }`)
+	})
+	input := &github.NewPullRequest{
+		Title: github.String("Synchronize (.github) configurations by ghconfig"),
+		Head:  github.String("ghconfig/workflows/fixed_id"),
+		Base:  github.String("master"),
+		Draft: github.Bool(true),
+	}
+
+	mux.HandleFunc("/repos/o/r/pulls", func(w http.ResponseWriter, r *http.Request) {
+		v := new(github.NewPullRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
+		testMethod(t, r, "POST")
+		if !reflect.DeepEqual(v, input) {
+			t.Errorf("Request body = %+v, want %+v", v, input)
+		}
+
+		fmt.Fprint(w, `{"number":1, "html_url": "https://github.com/o/r/pull/20"}`)
+	})
+	mux.HandleFunc("/repos/o/r/contents/.github/dependabot.yml", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		case "PUT":
+			fmt.Fprint(w, `
+			{
+				"content":{
+					"name":"CI"
+				},
+				"commit":{
+					"message":"m",
+					"sha":"f5f369044773ff9c6383c087466d12adb6fa0828",
+					"html_url": "https://github.com/o/r/blob/master/.github/dependabot.yml"
+				}
+			}`)
+		default:
+			t.Errorf("Request method: %v, want %v", r.Method, "PUT or GET")
+		}
+	})
+
+	ctx := context.Background()
+	sid := testIDGenerator{}
+
+	cfg := &config.Config{
+		GithubClient:    client,
+		Context:         ctx,
+		DryRun:          false,
+		BaseBranch:      "master",
+		Sid:             sid,
+		CreatePR:        true,
+		RepositoryQuery: "o",
+		RootDir:         "../test/fixture/simple-dependabot",
+	}
+
+	h := memory.New()
+	log.SetHandler(h)
+
+	stub := StubRepositorySelection([]string{"o/r"})
+	defer stub()
+
+	err := NewSyncCmd(cfg)
+	if err != nil {
+		t.Fatalf("could not execute command, %v", err)
+	}
+
+	for _, entry := range h.Entries {
+		if entry.Logger.Level >= log.ErrorLevel {
+			t.Error("stderr should be empty")
+		}
+	}
+}
+
+func TestSync_SingleHealthFile(t *testing.T) {
+	client, mux, serverURL, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `{"id":1, "Login": "o"}`)
+	})
+	mux.HandleFunc("/search/repositories", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testFormValues(t, r, values{
+			"q":        "o in:name",
+			"page":     "1",
+			"per_page": "120",
+		})
+
+		fmt.Fprint(w, `{"total_count": 1, "incomplete_results": false, "items": [{"id":1, "name": "r", "full_name": "o/r", "owner": {"id":1, "Login": "o"}}]}`)
+	})
+	mux.HandleFunc("/repos/o/r/contents/.github", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `[]`)
+	})
+	mux.HandleFunc("/repos/o/r/git/matching-refs/heads/master", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `
+		  [
+		    {
+		      "ref": "refs/heads/master",
+		      "url": "https://api.github.com/repos/o/r/git/refs/heads/master",
+		      "object": {
+		        "type": "commit",
+		        "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+		        "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		      }
+		    }
+		  ]`)
+	})
+
+	args := &createRefRequest{
+		Ref: github.String("refs/heads/ghconfig/workflows/fixed_id"),
+		SHA: github.String("aa218f56b14c9653891f9e74264a383fa43fefbd"),
+	}
+	mux.HandleFunc("/repos/o/r/git/refs", func(w http.ResponseWriter, r *http.Request) {
+		v := new(createRefRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
+		testMethod(t, r, "POST")
+		if !reflect.DeepEqual(v, args) {
+			t.Errorf("Request body = %+v, want %+v", v, args)
+		}
+		fmt.Fprint(w, `
+		  {
+		    "ref": "refs/heads/ghconfig/workflows/fixed_id",
+		    "url": "https://api.github.com/repos/o/r/git/refs/heads/ghconfig/workflows/fixed_id",
+		    "object": {
+		      "type": "commit",
+		      "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+		      "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		    }
+		  }`)
+	})
+	input := &github.NewPullRequest{
+		Title: github.String("Synchronize (.github) configurations by ghconfig"),
+		Head:  github.String("ghconfig/workflows/fixed_id"),
+		Base:  github.String("master"),
+		Draft: github.Bool(true),
+	}
+
+	mux.HandleFunc("/repos/o/r/pulls", func(w http.ResponseWriter, r *http.Request) {
+		v := new(github.NewPullRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
+		testMethod(t, r, "POST")
+		if !reflect.DeepEqual(v, input) {
+			t.Errorf("Request body = %+v, want %+v", v, input)
+		}
+
+		fmt.Fprint(w, `{"number":1, "html_url": "https://github.com/o/r/pull/20"}`)
+	})
+	mux.HandleFunc("/repos/o/r/contents/.github/SUPPORT.md", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			fmt.Fprint(w, `{
+				"type": "file",
+				"name": "f",
+				"path": ".github/SUPPORT.md",
+				"download_url": "`+serverURL+baseURLPath+`/download/.github/SUPPORT.md"
+			  }`)
+		case "PUT":
+			fmt.Fprint(w, `
+			{
+				"content":{
+					"name":"CI"
+				},
+				"commit":{
+					"message":"m",
+					"sha":"f5f369044773ff9c6383c087466d12adb6fa0828",
+					"html_url": "https://github.com/o/r/blob/master/.github/SUPPORT.md"
+				}
+			}`)
+		default:
+			t.Errorf("Request method: %v, want %v", r.Method, "PUT or GET")
+		}
+	})
+
+	ctx := context.Background()
+	sid := testIDGenerator{}
+
+	cfg := &config.Config{
+		GithubClient:    client,
+		Context:         ctx,
+		DryRun:          false,
+		BaseBranch:      "master",
+		Sid:             sid,
+		CreatePR:        true,
+		RepositoryQuery: "o",
+		RootDir:         "../test/fixture/simple-health-files",
+	}
+
+	h := memory.New()
+	log.SetHandler(h)
+
+	stub := StubRepositorySelection([]string{"o/r"})
+	defer stub()
+
+	err := NewSyncCmd(cfg)
+	if err != nil {
+		t.Fatalf("could not execute command, %v", err)
+	}
+
+	for _, entry := range h.Entries {
+		if entry.Logger.Level >= log.ErrorLevel {
+			t.Error("stderr should be empty")
+		}
+	}
+}
+
+func TestSync_HealthFileNotFoundOnRemote(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/user", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `{"id":1, "Login": "o"}`)
+	})
+	mux.HandleFunc("/search/repositories", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		testFormValues(t, r, values{
+			"q":        "o in:name",
+			"page":     "1",
+			"per_page": "120",
+		})
+
+		fmt.Fprint(w, `{"total_count": 1, "incomplete_results": false, "items": [{"id":1, "name": "r", "full_name": "o/r", "owner": {"id":1, "Login": "o"}}]}`)
+	})
+	mux.HandleFunc("/repos/o/r/contents/.github", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `[]`)
+	})
+	mux.HandleFunc("/repos/o/r/git/matching-refs/heads/master", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		fmt.Fprint(w, `
+		  [
+		    {
+		      "ref": "refs/heads/master",
+		      "url": "https://api.github.com/repos/o/r/git/refs/heads/master",
+		      "object": {
+		        "type": "commit",
+		        "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+		        "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		      }
+		    }
+		  ]`)
+	})
+
+	args := &createRefRequest{
+		Ref: github.String("refs/heads/ghconfig/workflows/fixed_id"),
+		SHA: github.String("aa218f56b14c9653891f9e74264a383fa43fefbd"),
+	}
+	mux.HandleFunc("/repos/o/r/git/refs", func(w http.ResponseWriter, r *http.Request) {
+		v := new(createRefRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
+		testMethod(t, r, "POST")
+		if !reflect.DeepEqual(v, args) {
+			t.Errorf("Request body = %+v, want %+v", v, args)
+		}
+		fmt.Fprint(w, `
+		  {
+		    "ref": "refs/heads/ghconfig/workflows/fixed_id",
+		    "url": "https://api.github.com/repos/o/r/git/refs/heads/ghconfig/workflows/fixed_id",
+		    "object": {
+		      "type": "commit",
+		      "sha": "aa218f56b14c9653891f9e74264a383fa43fefbd",
+		      "url": "https://api.github.com/repos/o/r/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+		    }
+		  }`)
+	})
+	input := &github.NewPullRequest{
+		Title: github.String("Synchronize (.github) configurations by ghconfig"),
+		Head:  github.String("ghconfig/workflows/fixed_id"),
+		Base:  github.String("master"),
+		Draft: github.Bool(true),
+	}
+
+	mux.HandleFunc("/repos/o/r/pulls", func(w http.ResponseWriter, r *http.Request) {
+		v := new(github.NewPullRequest)
+		json.NewDecoder(r.Body).Decode(v)
+
+		testMethod(t, r, "POST")
+		if !reflect.DeepEqual(v, input) {
+			t.Errorf("Request body = %+v, want %+v", v, input)
+		}
+
+		fmt.Fprint(w, `{"number":1, "html_url": "https://github.com/o/r/pull/20"}`)
+	})
+	mux.HandleFunc("/repos/o/r/contents/.github/SUPPORT.md", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		case "PUT":
+			fmt.Fprint(w, `
+			{
+				"content":{
+					"name":"CI"
+				},
+				"commit":{
+					"message":"m",
+					"sha":"f5f369044773ff9c6383c087466d12adb6fa0828",
+					"html_url": "https://github.com/o/r/blob/master/.github/SUPPORT.md"
+				}
+			}`)
+		default:
+			t.Errorf("Request method: %v, want %v", r.Method, "PUT or GET")
+		}
+	})
+
+	ctx := context.Background()
+	sid := testIDGenerator{}
+
+	cfg := &config.Config{
+		GithubClient:    client,
+		Context:         ctx,
+		DryRun:          false,
+		BaseBranch:      "master",
+		Sid:             sid,
+		CreatePR:        true,
+		RepositoryQuery: "o",
+		RootDir:         "../test/fixture/simple-health-files",
+	}
+
+	h := memory.New()
+	log.SetHandler(h)
+
+	stub := StubRepositorySelection([]string{"o/r"})
+	defer stub()
+
+	err := NewSyncCmd(cfg)
+	if err != nil {
+		t.Fatalf("could not execute command, %v", err)
+	}
+
+	for _, entry := range h.Entries {
+		if entry.Logger.Level >= log.ErrorLevel {
+			t.Error("stderr should be empty")
+		}
 	}
 }
