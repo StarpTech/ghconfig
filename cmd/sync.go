@@ -99,6 +99,7 @@ func NewSyncCmd(globalOptions *config.Config) error {
 	s.Suffix = " Update workflow files and create pull requests..."
 
 	s.Start()
+	start := time.Now()
 
 	t := tabby.New()
 	t.AddHeader("Repository", "Files", "Url")
@@ -191,6 +192,7 @@ func NewSyncCmd(globalOptions *config.Config) error {
 	close(results)
 
 	s.Stop()
+	elapsed := time.Since(start)
 
 	updates := []*config.RepositoryUpdate{}
 	for pkg := range results {
@@ -220,6 +222,8 @@ func NewSyncCmd(globalOptions *config.Config) error {
 
 	fmt.Println()
 	t.Print()
+
+	fmt.Printf("\nsync took %s\n", elapsed)
 
 	if globalOptions.DryRun {
 		file, err := os.Create(path.Join(globalOptions.RootDir, "ghconfig-debug.yml"))
