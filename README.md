@@ -23,7 +23,7 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository.
 ├── .github
 │   └── workflows
 │       ├── ci.yaml
-│       └── release.json
+│       └── release.yaml
 ├── .ghconfig
 │   ├── workflows
 │   │   ├── patches
@@ -38,7 +38,7 @@ This directory follows the same structure as your `.github` folder. All files ar
 
 ## Example:
 
-Sync your workflow and dependabot files:
+Sync your workflows and the dependabot:
 ```
 $ ghconfig sync
 
@@ -56,7 +56,7 @@ StarpTech/shikaka  ci.yaml               https://github.com/StarpTech/shikaka/pu
 sync took 1211.0006ms
 ```
 
-Apply a single patch on the workflow `nodejs.yml`:
+Apply a single patch on the workflow `release.yml`:
 ```
 $ ghconfig patch
 
@@ -68,9 +68,9 @@ $ ghconfig patch
 
 ? Please select all repositories: StarpTech/shikaka
 
-Repository         Files                 Url        
-----------         -----                 ---        
-StarpTech/shikaka  nodejs.yml (patched)  https://github.com/StarpTech/shikaka/pull/X
+Repository         Files                  Url        
+----------         -----                  ---        
+StarpTech/shikaka  release.yml (patched)  https://github.com/StarpTech/shikaka/pull/X
       
 sync took 400.1179ms
 ```
