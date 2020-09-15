@@ -17,16 +17,17 @@ import (
 var (
 	appDesc = `ghconfig is a CLI library to manage (.github) repository configurations as a fleet.
 
-Github CI Workflow files are in organizations very similiar. If you need to update a single Job you have to update every
-single repository manually. Ghconfig helps you to automate such tasks.
+	Managing Github CI Workflow and Dependabot files can be in organizations very exhausting because
+	there is no functionality to apply changes in a batch. Ghconfig helps you to automate such tasks.
 	`
 	app             = kingpin.New("ghconfig", appDesc)
 	dryRun          = app.Flag("dry-run", "Runs the command without side-effects.").Bool()
 	baseBranch      = app.Flag("base-branch", "The base branch.").Default("master").Short('b').String()
 	githubToken     = app.Flag("github-token", "Your personal github access token.").OverrideDefaultFromEnvar("GITHUB_TOKEN").Short('t').Required().String()
+	createPR        = app.Flag("create-pr", "Create a new branch and PR for all changes.").Default("true").Short('p').Bool()
+	repositoryQuery = app.Flag("query", "Search query (e.g org:ORGNAME, repo:owner/name)").Short('f').String()
 	syncCommand     = app.Command("sync", "Synchronize all configuration files.")
-	createPR        = syncCommand.Flag("create-pr", "Create a new branch and PR for all changes.").Default("true").Short('p').Bool()
-	repositoryQuery = syncCommand.Flag("query", "Search by repository name.").Short('f').String()
+	patchCommand    = app.Command("patch", "Apply all JSON patches on existing workflows.")
 )
 
 func main() {
@@ -56,21 +57,35 @@ func main() {
 		log.WithError(err).Fatalf("could not get wd")
 	}
 
-	cfg := &config.Config{
-		GithubClient:    client,
-		Context:         ctx,
-		DryRun:          *dryRun,
-		BaseBranch:      *baseBranch,
-		Sid:             sid,
-		CreatePR:        *createPR,
-		RepositoryQuery: *repositoryQuery,
-		RootDir:         pDir,
-	}
-
 	switch kingpin.MustParse(app.Parse(os.Args[1:])) {
 	case syncCommand.FullCommand():
+		cfg := &config.Config{
+			GithubClient:    client,
+			Context:         ctx,
+			DryRun:          *dryRun,
+			BaseBranch:      *baseBranch,
+			Sid:             sid,
+			CreatePR:        *createPR,
+			RepositoryQuery: *repositoryQuery,
+			RootDir:         pDir,
+		}
 		if err := cmd.NewSyncCmd(cfg); err != nil {
 			log.WithError(err).Fatalf("sync command error")
+		}
+	case patchCommand.FullCommand():
+		cfg := &config.Config{
+			GithubClient:    client,
+			Context:         ctx,
+			DryRun:          *dryRun,
+			BaseBranch:      *baseBranch,
+			Sid:             sid,
+			CreatePR:        *createPR,
+			RepositoryQuery: *repositoryQuery,
+			RootDir:         pDir,
+			PatchOnly:       true,
+		}
+		if err := cmd.NewSyncCmd(cfg); err != nil {
+			log.WithError(err).Fatalf("patch command error")
 		}
 	}
 

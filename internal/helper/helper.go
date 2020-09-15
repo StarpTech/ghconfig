@@ -66,55 +66,6 @@ func FindDependabot(dirPath string) (*config.DependabotTemplate, error) {
 	return nil, nil
 }
 
-// FindHealthFiles returns all github health files in the specified repository
-// https://docs.github.com/en/github/building-a-strong-community/creating-a-default-community-health-file
-func FindHealthFiles(dirPath string) ([]*config.GithubHealthFile, error) {
-	healthFiles := []*config.GithubHealthFile{}
-	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		return healthFiles, nil
-	}
-
-	files, err := ioutil.ReadDir(dirPath)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		fileName := file.Name()
-
-		switch file.Name() {
-		case "CODE_OF_CONDUCT.md":
-			fallthrough
-		case "FUNDING.md":
-			fallthrough
-		case "SECURITY.md":
-			fallthrough
-		case "CONTRIBUTING.md":
-			fallthrough
-		case "SUPPORT.md":
-			filePath := path.Join(dirPath, fileName)
-			bytes, err := ioutil.ReadFile(filePath)
-			if err != nil {
-				log.WithError(err).Errorf("could not read health file: %v", filePath)
-				continue
-			}
-			if len(bytes) == 0 {
-				log.Infof("health file is empty: %v", filePath)
-				continue
-			}
-			healthFiles = append(healthFiles, &config.GithubHealthFile{
-				Path:        path.Join(config.GithubConfigBaseDir, fileName),
-				FileContent: &bytes,
-				Filename:    fileName,
-			})
-		}
-	}
-	return healthFiles, nil
-}
-
 func FindWorkflows(dirPath string) ([]*config.WorkflowTemplate, error) {
 	templates := []*config.WorkflowTemplate{}
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
@@ -298,7 +249,7 @@ func FetchAllRepos(opts *config.Config) ([]*github.Repository, error) {
 	query := "user:" + *me.Login
 
 	if opts.RepositoryQuery != "" {
-		query = opts.RepositoryQuery + " in:name"
+		query = opts.RepositoryQuery
 	}
 
 	fetch := func(page int) (*github.RepositoriesSearchResult, *github.Response, error) {

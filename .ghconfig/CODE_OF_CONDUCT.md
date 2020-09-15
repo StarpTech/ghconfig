@@ -1,1 +1,0 @@
-# Ghconfig Code of Conduct

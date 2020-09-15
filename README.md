@@ -1,22 +1,22 @@
 <p align="center">
   <img alt="ghconfig Logo" src="https://raw.githubusercontent.com/StarpTech/ghconfig/master/docs/logo.png" />
   <h3 align="center">GitHub Config</h3>
-  <p align="center">Manage (.github) repository configurations as a fleet.</p>
+  <p align="center">Manage Github CI workflow files as a fleet.</p>
 </p>
 
 ---
 
-`ghconfig` is a CLI library to manage (.github) repository configurations as a fleet.
+`ghconfig` is a CLI library to manage Github CI workflow files as a fleet.
 
-Github CI Workflow files can be in organizations very similiar. If you need to update a single Job you have to update every
-single repository manually. Ghconfig helps you to automate such tasks. You can work in two modes.
+Managing Github CI Workflow and Dependabot files can be in organizations very exhausting because there is no functionality to apply changes in a batch. Ghconfig helps you to automate such tasks. You have two options:
 
-- Create a new workflow file based on your templates.
+- Apply [RFC7396 JSON merge patch](https://tools.ietf.org/html/rfc7396) based on your template and existing remote files.
 - Apply a [RFC6902 JSON patch](http://tools.ietf.org/html/rfc6902) on an existing workflow file.
 
 By default a Pull-Request is created for all changes on a repository.
+Ghconfig looks for a folder `.ghconfig` in the root of your repository. 
 
-Ghconfig looks for a folder `.ghconfig` in the root of your repository. Check out the [`.ghconfig`](./.ghconfig) folder in this repository to see how it will look like.
+**Example:** We will create an workflow `ci.yaml` and apply one patch to an existing workflow `release.yml`.
 
 ```
 .
@@ -27,15 +27,12 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository. Check ou
 ├── .ghconfig
 │   ├── workflows
 │   │   ├── patches
-│   │   │   └── nodejs.yaml
+│   │   │   └── release.yaml
 │   │   ├── ci.yaml
-│   │   └── release.yaml
-│   ├── CODE_OF_CONDUCT.md
-│   ├── dependabot.yml
-│   ├── FUNDING.yml
-│   ├── SECURITY.md
-│   └── SUPPORT.md
+│   └── dependabot.md
 ```
+
+> _All other Community Health files like (SUPPORT.md, CONTRIBUTING.md, ISSUE templates) can be managed by a repository called [`.github`](https://docs.github.com/en/github/building-a-strong-community/creating-a-default-community-health-file#about-default-community-health-files) in the user or organization._
 
 This directory follows the same structure as your `.github` folder. All files are handled as a [Go template](https://golang.org/pkg/text/template/) and in them you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and additionally to all utility functions of [sprig](http://masterminds.github.io/sprig/).
 
@@ -52,14 +49,8 @@ $ ghconfig sync
 
 Repository         Files                 Url
 ----------         -----                 ---
-StarpTech/shikaka  ci.yaml               https://github.com/StarpTech/shikaka/pull/24
-                   cron.yaml
-                   release.yaml
-                   nodejs.yml (patched)
-                   CODE_OF_CONDUCT.md
-                   CONTRIBUTING.md
-                   SECURITY.md
-                   SUPPORT.md
+StarpTech/shikaka  ci.yaml               https://github.com/StarpTech/shikaka/pull/X
+                   release.yml (patched)
                    dependabot.yml
 ```
 
@@ -70,6 +61,7 @@ We'd love to hear your feedback about ghconfig. If you spot bugs or have feature
 ## Usage
 
 - `ghconfig sync`
+- `ghconfig patch`
 - `ghconfig sync --no-create-pr`
 - `ghconfig sync --query=MyOrganisation`
 - `ghconfig sync --base-branch=master`
@@ -93,11 +85,6 @@ can make up to 30 requests per minute.
 
 This library is being initially developed for an internal application, so features will likely be implemented in the order that they are needed by that application. Feel free to create a feature request.
 
-- [x] Workflows
-- [x] JSON-Patch for Workflows
-- [x] Test suite
-- [ ] Manage Github community health files
-
 ## Versioning
 
 In general, ghconfig follows [semver](https://semver.org/) as closely as we
@@ -116,5 +103,6 @@ The logo is provided by [icons8.de](https://icons8.de)
 
 ## References
 
+- [Github CI](https://docs.github.com/en/actions/getting-started-with-github-actions/core-concepts-for-github-actions)
 - [About default community health files](https://docs.github.com/en/github/building-a-strong-community/creating-a-default-community-health-file)
 - [Dependabot](https://github.blog/2020-06-01-keep-all-your-packages-up-to-date-with-dependabot/)

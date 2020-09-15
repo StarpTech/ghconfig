@@ -29,10 +29,7 @@ type (
 		Sid             IDGenerator
 		RepositoryQuery string
 		RootDir         string
-	}
-
-	FileYAML struct {
-		Content string `yaml:"content"`
+		PatchOnly       bool
 	}
 
 	TemplateVars = map[string]interface{}
@@ -41,12 +38,6 @@ type (
 		Dependabot     *dependabot.GithubDependabot
 		Filename       string
 		RepositoryPath string
-	}
-
-	GithubHealthFile struct {
-		Filename    string
-		Path        string
-		FileContent *[]byte
 	}
 
 	WorkflowTemplate struct {
