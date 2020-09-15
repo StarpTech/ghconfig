@@ -1,27 +1,122 @@
-package internal
+package helper
 
 import (
+	"bytes"
 	"fmt"
+	"ghconfig/internal/config"
+	"ghconfig/internal/dependabot"
+	gh "ghconfig/internal/github"
+	"html/template"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 
+	"github.com/Masterminds/sprig"
 	"github.com/apex/log"
 	"github.com/google/go-github/v32/github"
 	"github.com/pieterclaerhout/go-waitgroup"
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	DefaultWorkflowDir  = "workflows"
-	BranchNamePattern   = "ghconfig/workflows/%s"
-	GhConfigWorkflowDir = ".ghconfig/%s"
-	GithubConfigDir     = ".github"
-)
+func FindDependabot(dirPath string) (*config.DependabotTemplate, error) {
+	tpl := &config.DependabotTemplate{}
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		return tpl, nil
+	}
 
-func FindWorkflows(dirPath string) ([]*WorkflowTemplate, error) {
-	templates := []*WorkflowTemplate{}
+	files, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		fileName := file.Name()
+
+		switch file.Name() {
+		case "dependabot.yml":
+			fallthrough
+		case "dependabot.yaml":
+			filePath := path.Join(dirPath, fileName)
+			bytes, err := ioutil.ReadFile(filePath)
+			if err != nil {
+				log.WithError(err).Errorf("could not read dependabot file: %v", filePath)
+				continue
+			}
+			if len(bytes) == 0 {
+				log.Infof("dependabot file is empty: %v", filePath)
+				continue
+			}
+			dependabot := &dependabot.GithubDependabot{}
+			err = yaml.Unmarshal(bytes, dependabot)
+			if err != nil {
+				log.WithError(err).Errorf("could not parse workflow file: %v", filePath)
+				continue
+			}
+			tpl.RepositoryPath = path.Join(config.GithubConfigBaseDir, fileName)
+			tpl.Dependabot = dependabot
+			tpl.Filename = fileName
+
+			return tpl, nil
+		}
+	}
+	return nil, nil
+}
+
+// FindHealthFiles returns all github health files in the specified repository
+// https://docs.github.com/en/github/building-a-strong-community/creating-a-default-community-health-file
+func FindHealthFiles(dirPath string) ([]*config.GithubHealthFile, error) {
+	healthFiles := []*config.GithubHealthFile{}
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		return healthFiles, nil
+	}
+
+	files, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		fileName := file.Name()
+
+		switch file.Name() {
+		case "CODE_OF_CONDUCT.md":
+			fallthrough
+		case "FUNDING.md":
+			fallthrough
+		case "SECURITY.md":
+			fallthrough
+		case "CONTRIBUTING.md":
+			fallthrough
+		case "SUPPORT.md":
+			filePath := path.Join(dirPath, fileName)
+			bytes, err := ioutil.ReadFile(filePath)
+			if err != nil {
+				log.WithError(err).Errorf("could not read health file: %v", filePath)
+				continue
+			}
+			if len(bytes) == 0 {
+				log.Infof("health file is empty: %v", filePath)
+				continue
+			}
+			healthFiles = append(healthFiles, &config.GithubHealthFile{
+				Path:        path.Join(config.GithubConfigBaseDir, fileName),
+				FileContent: &bytes,
+				Filename:    fileName,
+			})
+		}
+	}
+	return healthFiles, nil
+}
+
+func FindWorkflows(dirPath string) ([]*config.WorkflowTemplate, error) {
+	templates := []*config.WorkflowTemplate{}
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		return templates, nil
 	}
@@ -47,26 +142,26 @@ func FindWorkflows(dirPath string) ([]*WorkflowTemplate, error) {
 			continue
 		}
 		if len(bytes) == 0 {
+			log.Infof("workflow file is empty: %v", filePath)
 			continue
 		}
-		t := GithubWorkflow{}
+		t := gh.GithubWorkflow{}
 		err = yaml.Unmarshal(bytes, &t)
 		if err != nil {
 			log.WithError(err).Errorf("could not parse workflow file: %v", filePath)
 			continue
 		}
-		templates = append(templates, &WorkflowTemplate{
-			Workflow: &t,
-			// restore to .github/workflows structure to update the correct file in the repo
-			RepositoryFilePath: path.Join(GithubConfigDir, DefaultWorkflowDir, workflowName),
-			Filename:           workflowName,
+		templates = append(templates, &config.WorkflowTemplate{
+			Workflow:       &t,
+			RepositoryPath: path.Join(config.GithubConfigBaseDir, config.GhWorkflowDir, workflowName),
+			Filename:       workflowName,
 		})
 	}
 	return templates, nil
 }
 
-func FindPatches(dirPath string) ([]*PatchData, error) {
-	patches := []*PatchData{}
+func FindPatches(dirPath string) ([]*config.PatchData, error) {
+	patches := []*config.PatchData{}
 
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		return patches, nil
@@ -94,7 +189,7 @@ func FindPatches(dirPath string) ([]*PatchData, error) {
 			log.Infof("patch file: %v was empty.", filePath)
 			continue
 		}
-		patchData := PatchData{}
+		patchData := config.PatchData{}
 		err = yaml.Unmarshal(bytes, &patchData)
 		if err != nil {
 			log.WithError(err).Errorf("could not parse patch file: %v", filePath)
@@ -106,7 +201,7 @@ func FindPatches(dirPath string) ([]*PatchData, error) {
 	return patches, nil
 }
 
-func CreatePR(opts *Config, intent *WorkflowUpdatePackage) (string, error) {
+func CreatePR(opts *config.Config, intent *config.RepositoryUpdate) (string, error) {
 	// get ref to branch from
 	refs, _, err := opts.GithubClient.Git.ListMatchingRefs(
 		opts.Context,
@@ -141,14 +236,14 @@ func CreatePR(opts *Config, intent *WorkflowUpdatePackage) (string, error) {
 		return "", fmt.Errorf("could not find a ref on the base branch")
 	}
 
-	err = UpdateRepositoryFiles(opts, &intent.RepositoryOptions, intent.Files)
+	err = UpdateRepositoryFiles(opts, intent.RepositoryOptions, intent.Files)
 	if err != nil {
 		return "", err
 	}
 
 	draft := true
 
-	commitMsg := "Update workflows by ghconfig"
+	commitMsg := "Synchronize (.github) configurations by ghconfig"
 
 	pr, _, err := opts.GithubClient.PullRequests.Create(
 		opts.Context,
@@ -168,7 +263,7 @@ func CreatePR(opts *Config, intent *WorkflowUpdatePackage) (string, error) {
 	return pr.GetHTMLURL(), nil
 }
 
-func UpdateRepositoryFiles(opts *Config, updateOptions *RepositoryUpdateOptions, files []*WorkflowUpdatePackageFile) error {
+func UpdateRepositoryFiles(opts *config.Config, updateOptions *config.RepositoryUpdateOptions, files []*config.RepositoryFileUpdate) error {
 	for _, file := range files {
 		// commit message
 		commitMsg := "Update workflow files by ghconfig"
@@ -177,7 +272,7 @@ func UpdateRepositoryFiles(opts *Config, updateOptions *RepositoryUpdateOptions,
 			opts.Context,
 			updateOptions.Owner,
 			updateOptions.Repo,
-			file.RepositoryUpdateOptions.FilePath,
+			file.RepositoryUpdateOptions.Path,
 			&github.RepositoryContentFileOptions{
 				Branch:  &updateOptions.Branch,
 				Message: &commitMsg,
@@ -193,7 +288,7 @@ func UpdateRepositoryFiles(opts *Config, updateOptions *RepositoryUpdateOptions,
 	return nil
 }
 
-func FetchAllRepos(opts *Config) ([]*github.Repository, error) {
+func FetchAllRepos(opts *config.Config) ([]*github.Repository, error) {
 	me, _, err := opts.GithubClient.Users.Get(opts.Context, "")
 	if err != nil {
 		return nil, err
@@ -246,4 +341,20 @@ func FetchAllRepos(opts *Config) ([]*github.Repository, error) {
 	}
 
 	return allRepos, nil
+}
+
+func ExecuteTemplate(name string, text string, templateVars config.TemplateVars) (*bytes.Buffer, error) {
+	t := template.Must(template.New(name).
+		Delims("$((", "))").
+		Funcs(sprig.FuncMap()).
+		Parse(text))
+
+	bytesCache := new(bytes.Buffer)
+	err := t.Execute(bytesCache, templateVars)
+	if err != nil {
+		log.WithError(err).Error("could not execute template")
+		return nil, err
+	}
+
+	return bytesCache, nil
 }

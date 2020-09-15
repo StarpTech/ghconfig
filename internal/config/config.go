@@ -1,9 +1,19 @@
-package internal
+package config
 
 import (
 	"context"
+	"ghconfig/internal/dependabot"
+	gh "ghconfig/internal/github"
 
 	"github.com/google/go-github/v32/github"
+)
+
+var (
+	BranchNamePattern   = "ghconfig/workflows/%s"
+	GhWorkflowDir       = "workflows"
+	GhConfigBaseDir     = ".ghconfig"
+	GhPatchesDir        = "patches"
+	GithubConfigBaseDir = ".github"
 )
 
 type (
@@ -18,21 +28,38 @@ type (
 		BaseBranch      string
 		Sid             IDGenerator
 		RepositoryQuery string
-		WorkflowRoot    string
 		RootDir         string
 	}
 
+	FileYAML struct {
+		Content string `yaml:"content"`
+	}
+
+	TemplateVars = map[string]interface{}
+
+	DependabotTemplate struct {
+		Dependabot     *dependabot.GithubDependabot
+		Filename       string
+		RepositoryPath string
+	}
+
+	GithubHealthFile struct {
+		Filename    string
+		Path        string
+		FileContent *[]byte
+	}
+
 	WorkflowTemplate struct {
-		Workflow           *GithubWorkflow
-		Filename           string
-		RepositoryFilePath string
+		Workflow       *gh.GithubWorkflow
+		Filename       string
+		RepositoryPath string
 	}
 
 	RepositoryFileUpdateOptions struct {
 		FileContent *[]byte
 		Filename    string
 		SHA         string
-		FilePath    string
+		Path        string
 		DisplayName string
 		URL         string
 	}
@@ -56,14 +83,16 @@ type (
 		Repo        string
 	}
 
-	WorkflowUpdatePackage struct {
+	RepositoryUpdate struct {
 		Repository        *github.Repository
-		Files             []*WorkflowUpdatePackageFile
-		RepositoryOptions RepositoryUpdateOptions
+		Files             []*RepositoryFileUpdate
+		RepositoryOptions *RepositoryUpdateOptions
+		TemplateVars      TemplateVars
 	}
 
-	WorkflowUpdatePackageFile struct {
-		Workflow                *GithubWorkflow
+	RepositoryFileUpdate struct {
+		Workflow                *gh.GithubWorkflow
+		Dependabot              *dependabot.GithubDependabot
 		RepositoryUpdateOptions *RepositoryFileUpdateOptions
 	}
 )
