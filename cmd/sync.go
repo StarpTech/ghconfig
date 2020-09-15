@@ -212,8 +212,6 @@ func NewSyncCmd(globalOptions *config.Config) error {
 	fmt.Println()
 	t.Print()
 
-	fmt.Printf("\nsync took %s\n", elapsed)
-
 	if globalOptions.DryRun {
 		file, err := os.Create(path.Join(globalOptions.RootDir, "ghconfig-debug.yml"))
 		if err != nil {
@@ -246,7 +244,10 @@ func NewSyncCmd(globalOptions *config.Config) error {
 				}
 			}
 		}
+		fmt.Printf("\nData has been written to ghconfig-debug.yml\n")
 	}
+
+	fmt.Printf("\nComplete! %s\n", elapsed)
 
 	return nil
 }
