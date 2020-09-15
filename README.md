@@ -38,6 +38,7 @@ This directory follows the same structure as your `.github` folder. All files ar
 
 ## Example:
 
+Sync your workflow and dependabot files:
 ```
 $ ghconfig sync
 
@@ -50,8 +51,28 @@ $ ghconfig sync
 Repository         Files                 Url
 ----------         -----                 ---
 StarpTech/shikaka  ci.yaml               https://github.com/StarpTech/shikaka/pull/X
-                   release.yml (patched)
                    dependabot.yml
+
+sync took 1211.0006ms
+```
+
+Apply a single patch on the workflow `nodejs.yml`:
+```
+$ ghconfig patch
+
+? Please select all repositories:  [Use arrows to move, space to select, <right> to all, <left> to none, type to filter]
+  [ ]  StarpTech/profiling-nodejs
+  [ ]  StarpTech/go-web
+  [ ]  StarpTech/next-localization
+> [X]  StarpTech/shikaka
+
+? Please select all repositories: StarpTech/shikaka
+
+Repository         Files                 Url        
+----------         -----                 ---        
+StarpTech/shikaka  nodejs.yml (patched)  https://github.com/StarpTech/shikaka/pull/X
+      
+sync took 400.1179ms
 ```
 
 ## We want your feedback

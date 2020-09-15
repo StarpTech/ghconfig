@@ -144,15 +144,14 @@ func NewSyncCmd(globalOptions *config.Config) error {
 					}
 					update.Files = append(update.Files, fileUpdate)
 				}
+			} else {
+				files, err := preparePatches(globalOptions, update, patches)
+				if err != nil {
+					ctx.WithError(err).Error("could not prepare patch files")
+					return
+				}
+				update.Files = append(update.Files, files...)
 			}
-
-			files, err := preparePatches(globalOptions, update, patches)
-			if err != nil {
-				ctx.WithError(err).Error("could not prepare patch files")
-				return
-			}
-
-			update.Files = append(update.Files, files...)
 
 			if len(update.Files) > 0 {
 				if !globalOptions.DryRun {
