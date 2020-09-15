@@ -37,7 +37,7 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository. Check ou
 │   └── SUPPORT.md
 ```
 
-This directory follows the same structure as your `.github` folder. All `yaml` and `md` files are handled as a [Go template](https://golang.org/pkg/text/template/) and in them you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and additionally to all utility functions of [sprig](http://masterminds.github.io/sprig/).
+This directory follows the same structure as your `.github` folder. All files are handled as a [Go template](https://golang.org/pkg/text/template/) and in them you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and additionally to all utility functions of [sprig](http://masterminds.github.io/sprig/).
 
 ## Example:
 
@@ -45,11 +45,17 @@ This directory follows the same structure as your `.github` folder. All `yaml` a
 $ ghconfig sync
 ? Please select all target repositories. StarpTech/shikaka
 
-Repository         Files               Url
-----------         -----               ---
-StarpTech/shikaka  test.yaml           https://github.com/StarpTech/shikaka/pull/20
-                   test2.yaml
-                   nodejs.yml (patch)
+Repository         Files                 Url
+----------         -----                 ---
+StarpTech/shikaka  ci.yaml               https://github.com/StarpTech/shikaka/pull/24
+                   cron.yaml
+                   release.yaml
+                   nodejs.yml (patched)
+                   CODE_OF_CONDUCT.md
+                   CONTRIBUTING.md
+                   SECURITY.md
+                   SUPPORT.md
+                   dependabot.yml
 ```
 
 ## We want your feedback
