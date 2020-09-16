@@ -306,7 +306,7 @@ func preparePatches(opts *config.Config, update *config.RepositoryUpdate, patche
 
 		y, err := yaml.Marshal(patch)
 		if err != nil {
-			log.WithError(err).Error("could not marshal template")
+			log.WithError(err).Error("could not marshal patch")
 			return nil, err
 		}
 
@@ -403,8 +403,8 @@ func prepareWorkflows(opts *config.Config, update *config.RepositoryUpdate, temp
 		}
 
 		localTemplate := gh.GithubWorkflow{}
-		localYAMLData := bytesCache.Bytes()
-		err = yaml.Unmarshal(localYAMLData, &localTemplate)
+		templateBytes := bytesCache.Bytes()
+		err = yaml.Unmarshal(templateBytes, &localTemplate)
 		if err != nil {
 			log.WithError(err).Error("could unmarshal template")
 			continue
@@ -514,7 +514,7 @@ func prepareWorkflows(opts *config.Config, update *config.RepositoryUpdate, temp
 			file.RepositoryUpdateOptions.Filename = workflowTemplate.Filename
 			file.RepositoryUpdateOptions.DisplayName = workflowTemplate.Filename
 			file.Workflow = &localTemplate
-			file.RepositoryUpdateOptions.FileContent = &localYAMLData
+			file.RepositoryUpdateOptions.FileContent = &templateBytes
 			file.RepositoryUpdateOptions.Path = workflowTemplate.RepositoryPath
 			files = append(files, file)
 		}

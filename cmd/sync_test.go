@@ -448,7 +448,7 @@ func TestSync_WorkflowEmptyWorkflowFolderRemote(t *testing.T) {
 	}
 }
 
-func TestSync_Patch(t *testing.T) {
+func TestSync_JSONPatch(t *testing.T) {
 	client, mux, serverURL, teardown := setup()
 	defer teardown()
 
