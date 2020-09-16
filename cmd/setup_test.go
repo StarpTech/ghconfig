@@ -16,7 +16,7 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v32/github"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type (

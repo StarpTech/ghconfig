@@ -16,7 +16,7 @@ import (
 	"github.com/apex/log"
 	"github.com/google/go-github/v32/github"
 	"github.com/pieterclaerhout/go-waitgroup"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func FindDependabot(dirPath string) (*config.DependabotTemplate, error) {

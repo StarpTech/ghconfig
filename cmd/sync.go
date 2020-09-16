@@ -20,7 +20,7 @@ import (
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/google/go-github/v32/github"
 	"github.com/pieterclaerhout/go-waitgroup"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type (

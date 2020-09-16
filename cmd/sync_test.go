@@ -14,7 +14,7 @@ import (
 	"github.com/apex/log/handlers/memory"
 	"github.com/google/go-github/v32/github"
 	"github.com/tj/assert"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func TestSync_WorkflowNotExistOnRemote(t *testing.T) {
