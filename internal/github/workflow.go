@@ -10,8 +10,11 @@ type (
 	ServiceVolumes   = map[string]string
 	Outputs          = map[string]string
 	With             = map[string]string
+	Env              = map[string]string
+	IncludeExclude   = []map[string]string
+	Services         = map[string]*Service
 
-	Jobs = map[string]Job
+	Jobs = map[string]*Job
 
 	GithubWorkflow struct {
 		Name     string   `yaml:"name,omitempty" json:"name,omitempty"`
@@ -45,7 +48,6 @@ type (
 		PageBuild   string      `yaml:"page_build,omitempty" json:"page_build,omitempty"`
 		PullRequest PullRequest `yaml:"pull_request,omitempty" json:"pull_request,omitempty"`
 	}
-	Env = map[string]string
 
 	Run struct {
 		Shell            string `yaml:"shell,omitempty" json:"shell,omitempty"`
@@ -57,20 +59,18 @@ type (
 	MatrixInclude struct {
 		Node         string `yaml:"node,omitempty" json:"node,omitempty"`
 		Os           string `yaml:"os,omitempty" json:"os,omitempty"`
+		Npm          string `yaml:"npm,omitempty" json:"npm,omitempty"`
 		Experimental string `yaml:"experimental,omitempty" json:"experimental,omitempty"`
 	}
 	MatrixExclude struct {
 		Node         string `yaml:"node,omitempty" json:"node,omitempty"`
 		Os           string `yaml:"os,omitempty" json:"os,omitempty"`
+		Npm          string `yaml:"npm,omitempty" json:"npm,omitempty"`
 		Experimental string `yaml:"experimental,omitempty" json:"experimental,omitempty"`
 	}
-	Matrix struct {
-		NodeVersion []string        `yaml:"node-version,omitempty" json:"node-version,omitempty"`
-		Node        []string        `yaml:"node,omitempty" json:"node,omitempty"`
-		Os          []string        `yaml:"os,omitempty" json:"os,omitempty"`
-		Include     []MatrixInclude `yaml:"include,omitempty" json:"include,omitempty"`
-		Exclude     []MatrixExclude `yaml:"exclude,omitempty" json:"exclude,omitempty"`
-	}
+
+	Matrix = map[string]interface{}
+
 	Strategy struct {
 		Matrix      Matrix `yaml:"matrix,omitempty" json:"matrix,omitempty"`
 		MaxParallel int    `yaml:"max-parallel,omitempty" json:"max-parallel,omitempty"`
@@ -108,18 +108,18 @@ type (
 	}
 
 	Job struct {
-		RunsOn          string             `yaml:"runs-on,omitempty" json:"runs-on,omitempty"`
-		Strategy        Strategy           `yaml:"strategy,omitempty" json:"strategy,omitempty"`
-		Name            string             `yaml:"name,omitempty" json:"name,omitempty"`
-		Env             JobEnv             `yaml:"env,omitempty" json:"env,omitempty"`
-		ContinueOnError bool               `yaml:"continue-on-error,omitempty" json:"continue-on-error,omitempty"`
-		If              string             `yaml:"if,omitempty" json:"if,omitempty"`
-		Defaults        Defaults           `yaml:"defaults,omitempty" json:"defaults,omitempty"`
-		Outputs         Outputs            `yaml:"outputs,omitempty" json:"outputs,omitempty"`
-		Steps           []Step             `yaml:"steps,omitempty" json:"steps,omitempty"`
-		Needs           StringArray        `yaml:"needs,omitempty" json:"needs,omitempty"`         // string or array
-		Container       Container          `yaml:"container,omitempty" json:"container,omitempty"` // can be string if only an image name is passed
-		Services        map[string]Service `yaml:"services,omitempty" json:"services,omitempty"`
+		RunsOn          string      `yaml:"runs-on,omitempty" json:"runs-on,omitempty"`
+		Strategy        Strategy    `yaml:"strategy,omitempty" json:"strategy,omitempty"`
+		Name            string      `yaml:"name,omitempty" json:"name,omitempty"`
+		Env             JobEnv      `yaml:"env,omitempty" json:"env,omitempty"`
+		ContinueOnError bool        `yaml:"continue-on-error,omitempty" json:"continue-on-error,omitempty"`
+		If              string      `yaml:"if,omitempty" json:"if,omitempty"`
+		Defaults        Defaults    `yaml:"defaults,omitempty" json:"defaults,omitempty"`
+		Outputs         Outputs     `yaml:"outputs,omitempty" json:"outputs,omitempty"`
+		Steps           []*Step     `yaml:"steps,omitempty" json:"steps,omitempty"`
+		Needs           StringArray `yaml:"needs,omitempty" json:"needs,omitempty"`         // string or array
+		Container       Container   `yaml:"container,omitempty" json:"container,omitempty"` // can be string if only an image name is passed
+		Services        Services    `yaml:"services,omitempty" json:"services,omitempty"`
 	}
 
 	StringArray []string

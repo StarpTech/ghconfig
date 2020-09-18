@@ -256,9 +256,9 @@ func TestSync_WorkflowExistOnRemote(t *testing.T) {
 			  }`)
 		case "PUT":
 			wf := readWorkflow(r.Body)
-			assert.Equal(t, wf.Name, "Node CI")
+			assert.Equal(t, wf.Name, "patch")
 			assert.Equal(t, wf.Env["foo"], "bar")
-			assert.EqualValues(t, wf.Jobs["build"].Strategy.Matrix.NodeVersion, []string{"11.x", "12.x", "14.x"})
+			assert.EqualValues(t, wf.Jobs["build"].Strategy.Matrix["node-version"], []interface{}([]interface{}{"11.x", "12.x", "14.x"}))
 			assert.NotNil(t, wf.Jobs["build"])
 			assert.Equal(t, len(wf.Jobs["build"].Steps), 4)
 
@@ -284,8 +284,8 @@ func TestSync_WorkflowExistOnRemote(t *testing.T) {
 			"env": { "foo": "bar" },
 			"jobs": {
 				"build": {
-					"name": "build",
-					"steps": [{ "name": "ferfr", "run": "npm install" }] 
+					"name": "Node ${{ matrix.node-version }}",
+					"steps": [{ "name": "install", "run": "npm install", "with": { "a": "b" } }] 
 				}
 			}
 		}`)

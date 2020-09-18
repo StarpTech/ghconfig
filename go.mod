@@ -17,7 +17,7 @@ require (
 	github.com/google/go-github/v32 v32.1.0
 	github.com/google/uuid v1.1.2 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
-	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/imdario/mergo v0.3.11
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/pieterclaerhout/go-waitgroup v1.0.7

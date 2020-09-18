@@ -412,12 +412,6 @@ func prepareWorkflows(opts *config.Config, update *config.RepositoryUpdate, temp
 
 		for _, content := range dirContent {
 			if content.GetName() == workflowTemplate.Filename {
-				localJsonData, err := json.Marshal(localTemplate)
-				if err != nil {
-					log.WithError(err).Error("could not marshal template")
-					continue
-				}
-
 				content, _, resp, err := opts.GithubClient.Repositories.GetContents(
 					opts.Context,
 					update.RepositoryOptions.Owner,
@@ -459,34 +453,9 @@ func prepareWorkflows(opts *config.Config, update *config.RepositoryUpdate, temp
 					continue
 				}
 
-				repsitoryContentData, err := json.Marshal(remoteTemplate)
+				err = gh.MergeWorkflow(&localTemplate, remoteTemplate)
 				if err != nil {
-					log.WithError(err).Error("could not marshal template")
-					continue
-				}
-
-				patch, err := jsonpatch.CreateMergePatch(repsitoryContentData, localJsonData)
-				if err != nil {
-					log.WithError(err).Error("could not create merge patch")
-					continue
-				}
-
-				combinedPatch, err := jsonpatch.MergePatch(repsitoryContentData, patch)
-				if err != nil {
-					log.WithError(err).Error("could not merge patch")
-					continue
-				}
-
-				withoutCombinedPatch, err := jsonpatch.MergePatch(repsitoryContentData, combinedPatch)
-				if err != nil {
-					log.WithError(err).Error("could not merge patch")
-					continue
-				}
-
-				localTemplate = gh.GithubWorkflow{}
-				err = yaml.Unmarshal(withoutCombinedPatch, &localTemplate)
-				if err != nil {
-					log.WithError(err).Error("could not unmarshal template")
+					log.WithError(err).Error("could not merge template")
 					continue
 				}
 
