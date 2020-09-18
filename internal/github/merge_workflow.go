@@ -182,6 +182,7 @@ func mergeMapJobSteps(src, dst *Job) {
 				if !sStep.ContinueOnError {
 					sStep.ContinueOnError = dStep.ContinueOnError
 				}
+				break
 			}
 		}
 	}
@@ -282,6 +283,7 @@ func mergeMapJobServices(src, dst *Job) {
 				if srcSvc.Options == "" {
 					srcSvc.Options = dstSvc.Options
 				}
+				break
 			}
 		}
 	}
