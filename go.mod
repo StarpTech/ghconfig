@@ -25,6 +25,7 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
 	github.com/tj/assert v0.0.3
+	github.com/xeipuuv/gojsonschema v1.2.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
