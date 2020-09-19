@@ -9,19 +9,17 @@ import (
 func TestSync_MergeWorkflow(t *testing.T) {
 
 	// Remote Workflow on github
-	src := GithubWorkflow{
+	dst := GithubWorkflow{
 		Env: map[string]string{
 			"token": "123",
 		},
-		Name: "name_src",
+		Name: "name_dst",
 		On: On{
 			Push: Push{
 				Branches: []string{"master"},
 			},
 			Schedule: []Schedule{
-				{Cron: "123"},
-				{Cron: "123"},
-				{Cron: "123"},
+				{Cron: "not_added"},
 			},
 		},
 		Jobs: map[string]*Job{
@@ -35,6 +33,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 				Steps: []*Step{
 					{Name: "install", If: "if"},
 					{Run: "npm test"},
+					{Name: "not_added"},
 				},
 				Strategy: Strategy{
 					Matrix: map[string]interface{}{
@@ -52,7 +51,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 	}
 
 	// templated local worklfow
-	dst := GithubWorkflow{
+	src := GithubWorkflow{
 		Env: map[string]string{
 			"existing": "223",
 		},
@@ -66,7 +65,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 				{Cron: "12345"},
 			},
 		},
-		Name: "name_dst",
+		Name: "name_src",
 		Jobs: map[string]*Job{
 			"build": {
 				Name: "build",
@@ -75,7 +74,6 @@ func TestSync_MergeWorkflow(t *testing.T) {
 					"svc3": {Ports: []string{"8081", "9090"}},
 				},
 				Steps: []*Step{
-					{Name: "install", ContinueOnError: true},
 					{Name: "install", ContinueOnError: true},
 					{Run: "npm test"},
 					{Name: "build"},
@@ -118,8 +116,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 				Name: "build",
 				If:   "if",
 				Services: map[string]*Service{
-					"svc":  {Ports: []string{"4040", "8080", "8081", "9090"}},
-					"svc2": {Ports: []string{"8081", "9090"}},
+					"svc":  {Ports: []string{"8080", "9090", "4040"}},
 					"svc3": {Ports: []string{"8081", "9090"}},
 				},
 				Steps: []*Step{
@@ -129,9 +126,8 @@ func TestSync_MergeWorkflow(t *testing.T) {
 				},
 				Strategy: Strategy{
 					Matrix: Matrix{
-						"node-version": []string{"11.x", "12.x", "13.x", "14.x"},
+						"node-version": []string{"11.x", "12.x", "13.x"},
 						"include": []map[string]string{
-							{"node": "12"},
 							{"node": "12", "os": "windows-latest"},
 							{"not_exist_in_src": "12"},
 						},
@@ -149,12 +145,10 @@ func TestSync_MergeWorkflow(t *testing.T) {
 
 	err := MergeWorkflow(&dst, src)
 	assert.Nil(t, err)
-
-	err = MergeWorkflow(&dst, src)
-	assert.Nil(t, err)
-
 	// bb, _ := json.Marshal(&dst)
 	// fmt.Println(string(bb))
+	err = MergeWorkflow(&dst, src)
+	assert.Nil(t, err)
 
 	// spew.Dump(output.Jobs["build"].Steps)
 	assert.EqualValues(t, dst, output)

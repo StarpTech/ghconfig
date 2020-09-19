@@ -12,8 +12,7 @@ on:
 
 env:
     CI: true
-    A: $(( uuidv4 ))
-    B: $(( .Repo.GetFullName ))
+    A: $(( .Repo.GetFullName ))
 
 jobs:
   build:

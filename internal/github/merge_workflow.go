@@ -3,7 +3,6 @@ package github
 import (
 	"fmt"
 	"reflect"
-	"sort"
 
 	"github.com/imdario/mergo"
 )
@@ -26,19 +25,46 @@ func (t timeTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Val
 				if srcOn.PageBuild == "" {
 					srcOn.PageBuild = dstOn.PageBuild
 				}
-				srcOn.Release.Types = uniqueStringArray(srcOn.Release.Types, dstOn.Release.Types)
 
-				srcOn.Push.Branches = uniqueStringArray(srcOn.Push.Branches, dstOn.Push.Branches)
-				srcOn.Push.PathsIgnore = uniqueStringArray(srcOn.Push.PathsIgnore, dstOn.Push.PathsIgnore)
-				srcOn.Push.Tags = uniqueStringArray(srcOn.Push.Tags, dstOn.Push.Tags)
-				srcOn.Push.TagsIgnore = uniqueStringArray(srcOn.Push.TagsIgnore, dstOn.Push.TagsIgnore)
+				if len(srcOn.Release.Types) == 0 {
+					srcOn.Release.Types = dstOn.Release.Types
+				}
 
-				srcOn.PullRequest.Branches = uniqueStringArray(srcOn.PullRequest.Branches, dstOn.PullRequest.Branches)
-				srcOn.PullRequest.PathsIgnore = uniqueStringArray(srcOn.PullRequest.PathsIgnore, dstOn.PullRequest.PathsIgnore)
-				srcOn.PullRequest.Tags = uniqueStringArray(srcOn.PullRequest.Tags, dstOn.PullRequest.Tags)
-				srcOn.PullRequest.TagsIgnore = uniqueStringArray(srcOn.PullRequest.TagsIgnore, dstOn.PullRequest.TagsIgnore)
+				if len(srcOn.Push.Branches) == 0 {
+					srcOn.Push.Branches = dstOn.Push.Branches
+				}
 
-				mergeMapOnSchedule(&dstOn, &srcOn)
+				if len(srcOn.Push.TagsIgnore) == 0 {
+					srcOn.Push.TagsIgnore = dstOn.Push.TagsIgnore
+				}
+
+				if len(srcOn.Push.Tags) == 0 {
+					srcOn.Push.Tags = dstOn.Push.Tags
+				}
+
+				if len(srcOn.Push.PathsIgnore) == 0 {
+					srcOn.Push.PathsIgnore = dstOn.Push.PathsIgnore
+				}
+
+				if len(srcOn.PullRequest.Branches) == 0 {
+					srcOn.PullRequest.Branches = dstOn.PullRequest.Branches
+				}
+
+				if len(srcOn.PullRequest.PathsIgnore) == 0 {
+					srcOn.PullRequest.PathsIgnore = dstOn.PullRequest.PathsIgnore
+				}
+
+				if len(srcOn.PullRequest.Tags) == 0 {
+					srcOn.PullRequest.Tags = dstOn.PullRequest.Tags
+				}
+
+				if len(srcOn.PullRequest.TagsIgnore) == 0 {
+					srcOn.PullRequest.TagsIgnore = dstOn.PullRequest.TagsIgnore
+				}
+
+				if len(srcOn.Schedule) == 0 {
+					srcOn.Schedule = dstOn.Schedule
+				}
 
 				dst.Set(reflect.ValueOf(srcOn))
 			}
@@ -59,7 +85,7 @@ func (t timeTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Val
 				for sk, sj := range srcJobs {
 					for _, dj := range dstJobs {
 						if sj.Name == dj.Name {
-							mergeMapJobs(sj, dj)
+							mergeJobs(sj, dj)
 						}
 					}
 					dst.SetMapIndex(reflect.ValueOf(sk), reflect.ValueOf(sj))
@@ -75,34 +101,16 @@ func MergeWorkflow(dst *GithubWorkflow, src GithubWorkflow) error {
 	return mergo.MergeWithOverwrite(dst, src, mergo.WithTypeCheck, mergo.WithTransformers(timeTransformer{}))
 }
 
-func mergeMapOnSchedule(dst, src *On) {
-	schedules := []Schedule{}
-	keys := make(map[string]struct{})
-
-	for _, s := range dst.Schedule {
-		if _, ok := keys[s.Cron]; !ok {
-			schedules = append(schedules, s)
-			keys[s.Cron] = struct{}{}
-		}
+func mergeJobs(src, dst *Job) {
+	if len(src.Env) == 0 {
+		src.Env = dst.Env
 	}
-
-	for _, s := range src.Schedule {
-		if _, ok := keys[s.Cron]; !ok {
-			schedules = append(schedules, s)
-			keys[s.Cron] = struct{}{}
-		}
+	if len(src.Needs) == 0 {
+		src.Needs = dst.Needs
 	}
-
-	src.Schedule = schedules
-
-}
-
-func mergeMapJobs(src, dst *Job) {
-	src.Needs = uniqueStringArray(src.Needs, dst.Needs)
-	src.Env = mergeStringMap(src.Env, dst.Env)
-	src.Needs = uniqueStringArray(src.Needs, dst.Needs)
-	src.Outputs = mergeStringMap(src.Outputs, dst.Outputs)
-
+	if len(src.Outputs) == 0 {
+		src.Outputs = dst.Outputs
+	}
 	if src.RunsOn == "" {
 		src.RunsOn = dst.RunsOn
 	}
@@ -121,25 +129,24 @@ func mergeMapJobs(src, dst *Job) {
 	if src.Defaults.Run.Shell == "" {
 		src.Defaults.Run.Shell = dst.Defaults.Run.Shell
 	}
-
 	if len(src.Strategy.Matrix) == 0 {
 		src.Strategy.Matrix = dst.Strategy.Matrix
 	} else {
-		mergeMapJobStrategy(src, dst)
+		mergeJobStrategy(src, dst)
 	}
 
-	mergeMapJobContainer(src, dst)
+	mergeJobContainer(src, dst)
 
 	if len(src.Services) == 0 {
 		src.Services = dst.Services
 	} else {
-		mergeMapJobServices(src, dst)
+		mergeJobServices(src, dst)
 	}
 
 	if len(src.Steps) == 0 {
 		src.Steps = dst.Steps
 	} else {
-		mergeMapJobSteps(src, dst)
+		mergeJobSteps(src, dst)
 	}
 }
 
@@ -156,11 +163,13 @@ func isSameStep(a, b *Step) bool {
 	return false
 }
 
-func mergeMapJobSteps(src, dst *Job) {
+func mergeJobSteps(src, dst *Job) {
 	for _, sStep := range src.Steps {
 		for _, dStep := range dst.Steps {
 			if isSameStep(sStep, dStep) {
-				sStep.With = mergeStringMap(sStep.With, dStep.With)
+				if len(sStep.With) == 0 {
+					sStep.With = dStep.With
+				}
 				if sStep.Name == "" {
 					sStep.Name = dStep.Name
 				}
@@ -186,23 +195,9 @@ func mergeMapJobSteps(src, dst *Job) {
 			}
 		}
 	}
-
-	// add missing not duplicate steps from dst
-	for _, djStep := range dst.Steps {
-		dup := false
-		for _, sjStep := range src.Steps {
-			if isSameStep(djStep, sjStep) {
-				dup = true
-				break
-			}
-		}
-		if !dup {
-			src.Steps = append(src.Steps, djStep)
-		}
-	}
 }
 
-func mergeMapJobStrategy(src, dst *Job) {
+func mergeJobStrategy(src, dst *Job) {
 	if !src.Strategy.FailFast {
 		src.Strategy.FailFast = dst.Strategy.FailFast
 	}
@@ -217,38 +212,15 @@ func mergeMapJobStrategy(src, dst *Job) {
 				switch srcValType := srcVal.(type) {
 				case []string:
 					if dstArray, ok := dstVal.([]string); ok {
-						src.Strategy.Matrix[srcKey] = uniqueStringArray(srcValType, dstArray)
+						if len(srcValType) == 0 {
+							src.Strategy.Matrix[srcKey] = dstArray
+						}
 					}
 				case []map[string]string:
 					if dstArrayMap, ok := dstVal.([]map[string]string); ok {
-						rr := []map[string]string{}
-						// add missing not duplicate from src
-						for _, srcMap := range srcValType {
-							dup := false
-							for _, dstMap := range dstArrayMap {
-								if reflect.DeepEqual(srcMap, dstMap) {
-									dup = true
-									break
-								}
-							}
-							if !dup {
-								rr = append(rr, srcMap)
-							}
+						if len(srcValType) == 0 {
+							src.Strategy.Matrix[srcKey] = dstArrayMap
 						}
-						// add missing not duplicate from dst
-						for _, dstMap := range dstArrayMap {
-							dup := false
-							for _, rrMap := range rr {
-								if reflect.DeepEqual(rrMap, dstMap) {
-									dup = true
-									break
-								}
-							}
-							if !dup {
-								rr = append(rr, dstMap)
-							}
-						}
-						src.Strategy.Matrix[srcKey] = rr
 					}
 				default:
 					if !reflect.ValueOf(srcValType).IsZero() {
@@ -261,22 +233,34 @@ func mergeMapJobStrategy(src, dst *Job) {
 	}
 }
 
-func mergeMapJobContainer(src, dst *Job) {
-	src.Container.Env = mergeStringMap(src.Container.Env, dst.Container.Env)
-	src.Container.Ports = uniqueStringArray(src.Container.Ports, dst.Container.Ports)
-	src.Container.Volumes = mergeStringMap(src.Container.Volumes, dst.Container.Volumes)
+func mergeJobContainer(src, dst *Job) {
+	if len(src.Container.Env) == 0 {
+		src.Container.Env = dst.Container.Env
+	}
+	if len(src.Container.Ports) == 0 {
+		src.Container.Ports = dst.Container.Ports
+	}
+	if len(src.Container.Volumes) == 0 {
+		src.Container.Volumes = dst.Container.Volumes
+	}
 	if src.Container.Image == "" {
 		src.Container.Image = dst.Container.Image
 	}
 }
 
-func mergeMapJobServices(src, dst *Job) {
+func mergeJobServices(src, dst *Job) {
 	for srcKey, srcSvc := range src.Services {
 		for dstKey, dstSvc := range dst.Services {
 			if srcKey == dstKey {
-				srcSvc.Ports = uniqueStringArray(srcSvc.Ports, dstSvc.Ports)
-				srcSvc.Env = mergeStringMap(srcSvc.Env, dstSvc.Env)
-				srcSvc.Volumes = mergeStringMap(srcSvc.Volumes, dstSvc.Volumes)
+				if len(srcSvc.Ports) == 0 {
+					srcSvc.Ports = dstSvc.Ports
+				}
+				if len(srcSvc.Env) == 0 {
+					srcSvc.Env = dstSvc.Env
+				}
+				if len(srcSvc.Volumes) == 0 {
+					srcSvc.Volumes = dstSvc.Volumes
+				}
 				if srcSvc.Image == "" {
 					srcSvc.Image = dstSvc.Image
 				}
@@ -287,39 +271,4 @@ func mergeMapJobServices(src, dst *Job) {
 			}
 		}
 	}
-
-	// add missing not duplicate services from dst
-	for k, dstSvc := range dst.Services {
-		if _, ok := src.Services[k]; !ok {
-			src.Services[k] = dstSvc
-		}
-	}
-}
-
-func uniqueStringArray(a, b []string) []string {
-	stringSlice := append(a, b...)
-	keys := make(map[string]struct{})
-	list := []string{}
-
-	for _, entry := range stringSlice {
-		if _, value := keys[entry]; !value {
-			keys[entry] = struct{}{}
-			list = append(list, entry)
-		}
-	}
-
-	if len(list) == 0 {
-		return nil
-	}
-
-	sort.Strings(list)
-
-	return list
-}
-
-func mergeStringMap(a, b map[string]string) map[string]string {
-	for k, v := range b {
-		a[k] = v
-	}
-	return a
 }

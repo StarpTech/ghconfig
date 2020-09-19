@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"ghconfig/internal/config"
 	"ghconfig/internal/dependabot"
+	gh "ghconfig/internal/github"
 	"net/http"
 	"reflect"
 	"testing"
@@ -256,11 +257,47 @@ func TestSync_WorkflowExistOnRemote(t *testing.T) {
 			  }`)
 		case "PUT":
 			wf := readWorkflow(r.Body)
-			assert.Equal(t, wf.Name, "patch")
-			assert.Equal(t, wf.Env["foo"], "bar")
-			assert.EqualValues(t, wf.Jobs["build"].Strategy.Matrix["node-version"], []interface{}([]interface{}{"11.x", "12.x", "14.x"}))
-			assert.NotNil(t, wf.Jobs["build"])
-			assert.Equal(t, len(wf.Jobs["build"].Steps), 4)
+
+			output := gh.GithubWorkflow{
+				On: gh.On{
+					Push: gh.Push{
+						PathsIgnore: []string{"**.md", "docs/**"},
+					},
+					PullRequest: gh.PullRequest{
+						PathsIgnore: []string{"**.md", "docs/**"},
+					},
+				},
+				Env: map[string]string{
+					"A":   "o/r",
+					"CI":  "true",
+					"foo": "bar",
+				},
+				Name: "patch",
+				Jobs: map[string]*gh.Job{
+					"build": {
+						Name:   "Node ${{ matrix.node-version }}",
+						RunsOn: "${{ matrix.os }}",
+						Needs:  gh.StringArray{"a"},
+						Steps: []*gh.Step{
+							{
+								Name: "install",
+								Run:  "npm install",
+								With: map[string]string{
+									"a": "b",
+								},
+							},
+						},
+						Strategy: gh.Strategy{
+							Matrix: gh.Matrix{
+								"node-version": []interface{}{"11.x", "12.x", "14.x"},
+								"os":           []interface{}{"ubuntu-latest"},
+							},
+						},
+					},
+				},
+			}
+
+			assert.EqualValues(t, wf, output)
 
 			fmt.Fprint(w, `
 			{
