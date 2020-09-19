@@ -40,7 +40,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 			},
 		},
 		{
-			Description: "Steps from same Job with the same name or id are merged. No steps from dst are appended.",
+			Description: "Steps from same Job with the same (name or id or properties) are merged. No steps from dst are appended.",
 			Dst: GithubWorkflow{
 				Jobs: map[string]*Job{
 					"build": {
