@@ -10,7 +10,14 @@ import (
 type timeTransformer struct{}
 
 func (t timeTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Value) error {
-	if typ == reflect.TypeOf(On{}) {
+	if typ == reflect.TypeOf(Env{}) {
+		return func(dst, src reflect.Value) error {
+			if dst.CanSet() {
+				dst.Set(src)
+			}
+			return nil
+		}
+	} else if typ == reflect.TypeOf(On{}) {
 		return func(dst, src reflect.Value) error {
 			if dst.CanSet() {
 				dstOn, ok := dst.Interface().(On)

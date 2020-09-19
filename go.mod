@@ -22,6 +22,7 @@ require (
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/pieterclaerhout/go-waitgroup v1.0.7
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/stretchr/testify v1.6.1
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
 	github.com/tj/assert v0.0.3
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect

@@ -12,6 +12,7 @@ type (
 	With             = map[string]string
 	Env              = map[string]string
 	IncludeExclude   = []map[string]string
+	Matrix           = map[string]interface{}
 	Services         = map[string]*Service
 
 	Jobs = map[string]*Job
@@ -68,8 +69,6 @@ type (
 		Npm          string `yaml:"npm,omitempty" json:"npm,omitempty"`
 		Experimental string `yaml:"experimental,omitempty" json:"experimental,omitempty"`
 	}
-
-	Matrix = map[string]interface{}
 
 	Strategy struct {
 		Matrix      Matrix `yaml:"matrix,omitempty" json:"matrix,omitempty"`
