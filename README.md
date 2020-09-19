@@ -11,7 +11,7 @@
 Managing Workflow and Dependabot files can be in organizations very exhausting because there is no way to apply changes in a batch.
 
 - You need to adjust your compatibility matrix from `[13.x]` to `[14.x]` on 50 Repositories?
-- You want to standardize your CI through the organization?
+- You want to standardize your CI?
 
 No problem, `ghconfig` helps you to automate such tasks. You have two options:
 
