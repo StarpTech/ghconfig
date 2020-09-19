@@ -1,7 +1,7 @@
 <p align="center">
   <img alt="ghconfig Logo" src="https://raw.githubusercontent.com/StarpTech/ghconfig/master/docs/logo.png" />
   <h3 align="center">GitHub Config</h3>
-  <p align="center">Manage Github CI workflow files as a fleet.</p>
+  <p align="center">Manage Github Workflows and Dependabot files as a fleet.</p>
 </p>
 
 ---
