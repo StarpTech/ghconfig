@@ -561,7 +561,10 @@ func TestSync_JSONPatch(t *testing.T) {
 	})
 	mux.HandleFunc("/download/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		fmt.Fprint(w, "name: foo")
+		bytes, _ := yaml.Marshal(&gh.GithubWorkflow{
+			Name: "foo",
+		})
+		fmt.Fprint(w, string(bytes))
 	})
 
 	args := &createRefRequest{
@@ -618,6 +621,7 @@ func TestSync_JSONPatch(t *testing.T) {
 		Sid:             sid,
 		CreatePR:        true,
 		RepositoryQuery: "o in:name",
+		PatchOnly:       true,
 		RootDir:         "../test/fixture/simple-patch",
 	}
 

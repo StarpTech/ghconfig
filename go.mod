@@ -13,7 +13,6 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/briandowns/spinner v1.11.1
 	github.com/cheynewallace/tabby v1.1.0
-	github.com/davecgh/go-spew v1.1.1
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/google/go-github/v32 v32.1.0
 	github.com/google/uuid v1.1.2 // indirect
