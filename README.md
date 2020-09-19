@@ -21,7 +21,7 @@ No problem, `ghconfig` helps you to automate such tasks. You have two options:
 By default a Pull-Request is created for all changes on a repository.
 Ghconfig looks for a folder `.ghconfig` in the root of your repository. 
 
-**Example:** We will create an workflow `ci.yaml` and apply one patch to an existing workflow `release.yml`.
+**Example:** We will create a workflow `ci.yaml` and apply one patch to an existing workflow `release.yml`.
 
 ```
 .
@@ -39,7 +39,7 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository.
 
 > _All other Community Health files like (SUPPORT.md, CONTRIBUTING.md, ISSUE templates) can be managed by a repository called [`.github`](https://docs.github.com/en/github/building-a-strong-community/creating-a-default-community-health-file#about-default-community-health-files) in the user or organization._
 
-This directory follows the same structure as your `.github` folder. All files are handled as a [Go template](https://golang.org/pkg/text/template/) and in them you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and additionally to all utility functions of [sprig](http://masterminds.github.io/sprig/).
+This directory follows the same structure as your `.github` folder. All files are handled as a [Go template](https://golang.org/pkg/text/template/) and you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and to all utility functions of [sprig](http://masterminds.github.io/sprig/).
 
 ## Example:
 
