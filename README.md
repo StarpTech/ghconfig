@@ -8,7 +8,12 @@
 
 `ghconfig` is a CLI library to manage Github Workflows and Dependabot files as a fleet.
 
-Managing Workflow and Dependabot files can be in organizations very exhausting because there is no functionality to apply changes in a batch. Ghconfig helps you to automate such tasks. You have two options:
+Managing Workflow and Dependabot files can be in organizations very exhausting because there is no way to apply changes in a batch.
+
+- You need to adjust your compatibility matrix from `[13.x]` to `[14.x]` on 50 Repositories?
+- You want to standardize your CI through the organization?
+
+No problem, Ghconfig helps you to automate such tasks. You have two options:
 
 - Strategic Merge of your local and remote files. Your local state will always overwrite the remote state, unless the change can be merged idempotent.
 - Apply a [RFC6902 JSON patch](http://tools.ietf.org/html/rfc6902) on a remote workflow file.
