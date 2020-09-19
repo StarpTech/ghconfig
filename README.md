@@ -41,16 +41,13 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository.
 
 This directory follows the same structure as your `.github` folder. All files are handled as a [Go template](https://golang.org/pkg/text/template/) and you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and to all utility functions of [sprig](http://masterminds.github.io/sprig/).
 
-## Example:
+## Examples:
 
-Sync your workflows and the dependabot:
+Sync your workflow and the dependabot file:
 ```
 $ ghconfig sync
 
 ? Please select all repositories:  [Use arrows to move, space to select, <right> to all, <left> to none, type to filter]
-  [ ]  StarpTech/profiling-nodejs
-  [ ]  StarpTech/go-web
-  [ ]  StarpTech/next-localization
 > [X]  StarpTech/shikaka
 
 Repository         Files                 Url
@@ -66,9 +63,6 @@ Apply a single patch on the workflow `release.yml`:
 $ ghconfig patch
 
 ? Please select all repositories:  [Use arrows to move, space to select, <right> to all, <left> to none, type to filter]
-  [ ]  StarpTech/profiling-nodejs
-  [ ]  StarpTech/go-web
-  [ ]  StarpTech/next-localization
 > [X]  StarpTech/shikaka
 
 ? Please select all repositories: StarpTech/shikaka
