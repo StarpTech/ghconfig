@@ -453,7 +453,7 @@ func prepareWorkflows(opts *config.Config, update *config.RepositoryUpdate, temp
 					continue
 				}
 
-				err = gh.MergeWorkflow(&localTemplate, remoteTemplate)
+				err = gh.MergeWorkflow(&remoteTemplate, localTemplate)
 				if err != nil {
 					log.WithError(err).Error("could not merge template")
 					continue

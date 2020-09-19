@@ -268,24 +268,33 @@ func TestSync_WorkflowExistOnRemote(t *testing.T) {
 					},
 				},
 				Env: map[string]string{
-					"A":   "o/r",
-					"CI":  "true",
-					"foo": "bar",
+					"A":  "o/r",
+					"CI": "true",
 				},
-				Name: "patch",
+				Name: "Node CI",
 				Jobs: map[string]*gh.Job{
 					"build": {
 						Name:   "Node ${{ matrix.node-version }}",
 						RunsOn: "${{ matrix.os }}",
 						Needs:  gh.StringArray{"a"},
 						Steps: []*gh.Step{
+							{Uses: "actions/checkout@v2"},
+							{
+								Name: "Use Node.js ${{ matrix.node-version }}",
+								Uses: "actions/setup-node@v1",
+								With: map[string]string{
+									"node-version": "${{ matrix.node-version }}",
+								},
+							},
 							{
 								Name: "install",
-								Run:  "npm install",
+								Run:  "yarn install\n",
 								With: map[string]string{
 									"a": "b",
 								},
 							},
+
+							{Name: "test", Run: "yarn test"},
 						},
 						Strategy: gh.Strategy{
 							Matrix: gh.Matrix{
