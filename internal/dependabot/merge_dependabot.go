@@ -42,6 +42,15 @@ func MergeDependabot(dst *GithubDependabot, src GithubDependabot) error {
 }
 
 func mergeUpdates(src, dst *Updates) {
+	if src.Milestone == "" {
+		src.Milestone = dst.Milestone
+	}
+	if src.PullRequestBranchName == "" {
+		src.PullRequestBranchName = dst.PullRequestBranchName
+	}
+	if src.RebaseStrategy == "" {
+		src.RebaseStrategy = dst.RebaseStrategy
+	}
 	if src.PackageEcosystem == "" {
 		src.PackageEcosystem = dst.PackageEcosystem
 	}
@@ -51,10 +60,38 @@ func mergeUpdates(src, dst *Updates) {
 	if src.Schedule.Interval == "" {
 		src.Schedule.Interval = dst.Schedule.Interval
 	}
-	if src.OpenPullRequestsLimit == "" {
+	if src.OpenPullRequestsLimit == 0 {
 		src.OpenPullRequestsLimit = dst.OpenPullRequestsLimit
 	}
 	if len(src.Ignore) == 0 {
 		src.Ignore = dst.Ignore
 	}
+	if len(src.Assignees) == 0 {
+		src.Assignees = dst.Assignees
+	}
+	if len(src.Labels) == 0 {
+		src.Labels = dst.Labels
+	}
+	if len(src.Reviewers) == 0 {
+		src.Reviewers = dst.Reviewers
+	}
+	if len(src.TargetBranch) == 0 {
+		src.TargetBranch = dst.TargetBranch
+	}
+	if len(src.VersioningStrategy) == 0 {
+		src.VersioningStrategy = dst.VersioningStrategy
+	}
+	if len(src.Allow) == 0 {
+		src.Allow = dst.Allow
+	}
+	if src.CommitMessage.Include == "" {
+		src.CommitMessage.Include = dst.CommitMessage.Include
+	}
+	if src.CommitMessage.Prefix == "" {
+		src.CommitMessage.Prefix = dst.CommitMessage.Prefix
+	}
+	if src.CommitMessage.PrefixDevelopment == "" {
+		src.CommitMessage.PrefixDevelopment = dst.CommitMessage.PrefixDevelopment
+	}
+
 }

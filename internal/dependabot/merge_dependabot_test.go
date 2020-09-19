@@ -43,7 +43,7 @@ func TestSync_MergeDependabot(t *testing.T) {
 				Updates: []*Updates{
 					{
 						Directory:             "/foo",
-						OpenPullRequestsLimit: "123",
+						OpenPullRequestsLimit: 5,
 					},
 					{
 						Directory: "/hello",
@@ -58,7 +58,7 @@ func TestSync_MergeDependabot(t *testing.T) {
 				Updates: []*Updates{
 					{
 						Directory:             "/foo",
-						OpenPullRequestsLimit: "123",
+						OpenPullRequestsLimit: 5,
 						Ignore: []Ignore{
 							{DependencyName: "dep", Versions: []string{"1.0.0", "2.0.0"}},
 						},

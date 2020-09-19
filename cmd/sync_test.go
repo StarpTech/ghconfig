@@ -873,7 +873,7 @@ func TestSync_DependabotExistOnRemote(t *testing.T) {
 					{
 						Directory:             "/",
 						PackageEcosystem:      "docker",
-						OpenPullRequestsLimit: "0",
+						OpenPullRequestsLimit: 0,
 						Schedule: dependabot.Schedule{
 							Interval: "weekly",
 						},
