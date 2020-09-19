@@ -90,8 +90,8 @@ func (t timeTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Val
 				}
 
 				for sk, sj := range srcJobs {
-					for _, dj := range dstJobs {
-						if sj.Name == dj.Name {
+					for dk, dj := range dstJobs {
+						if sk == dk {
 							mergeJobs(sj, dj)
 						}
 					}
@@ -136,11 +136,8 @@ func mergeJobs(src, dst *Job) {
 	if src.Defaults.Run.Shell == "" {
 		src.Defaults.Run.Shell = dst.Defaults.Run.Shell
 	}
-	if len(src.Strategy.Matrix) == 0 {
-		src.Strategy.Matrix = dst.Strategy.Matrix
-	} else {
-		mergeJobStrategy(src, dst)
-	}
+
+	mergeJobStrategy(src, dst)
 
 	mergeJobContainer(src, dst)
 
@@ -213,20 +210,29 @@ func mergeJobStrategy(src, dst *Job) {
 		src.Strategy.MaxParallel = dst.Strategy.MaxParallel
 	}
 
+	if len(src.Strategy.Matrix) == 0 {
+		src.Strategy.Matrix = dst.Strategy.Matrix
+		return
+	}
+
 	for srcKey, srcVal := range src.Strategy.Matrix {
 		for dstKey, dstVal := range dst.Strategy.Matrix {
 			if srcKey == dstKey {
 				switch srcValType := srcVal.(type) {
-				case []string:
-					if dstArray, ok := dstVal.([]string); ok {
-						if len(srcValType) == 0 {
-							src.Strategy.Matrix[srcKey] = dstArray
-						}
-					}
-				case []map[string]string:
-					if dstArrayMap, ok := dstVal.([]map[string]string); ok {
-						if len(srcValType) == 0 {
-							src.Strategy.Matrix[srcKey] = dstArrayMap
+				case []interface{}:
+					for _, v := range srcValType {
+						if sv, ok := v.([]string); ok {
+							if len(sv) == 0 {
+								if dstArray, ok := dstVal.([]string); ok {
+									src.Strategy.Matrix[srcKey] = dstArray
+								}
+							}
+						} else if _, ok := v.([]map[string]string); ok {
+							if dstArrayMap, ok := dstVal.([]map[string]string); ok {
+								if len(srcValType) == 0 {
+									src.Strategy.Matrix[srcKey] = dstArrayMap
+								}
+							}
 						}
 					}
 				default:

@@ -298,8 +298,8 @@ func TestSync_WorkflowExistOnRemote(t *testing.T) {
 						},
 						Strategy: gh.Strategy{
 							Matrix: gh.Matrix{
-								"node-version": []interface{}{"11.x", "12.x", "14.x"},
-								"os":           []interface{}{"ubuntu-latest"},
+								"os":           []gh.MatrixValue{"ubuntu-latest"},
+								"node-version": []gh.MatrixValue{"11.x", "12.x", "14.x"},
 							},
 						},
 					},

@@ -459,7 +459,7 @@ func prepareWorkflows(opts *config.Config, update *config.RepositoryUpdate, temp
 					continue
 				}
 
-				output, err := yaml.Marshal(localTemplate)
+				output, err := yaml.Marshal(remoteTemplate)
 				if err != nil {
 					log.WithError(err).Error("could not marshal template")
 					continue
@@ -469,7 +469,7 @@ func prepareWorkflows(opts *config.Config, update *config.RepositoryUpdate, temp
 				file.RepositoryUpdateOptions = &config.RepositoryFileUpdateOptions{}
 				file.RepositoryUpdateOptions.Filename = content.GetName()
 				file.RepositoryUpdateOptions.DisplayName = file.RepositoryUpdateOptions.Filename
-				file.Workflow = &localTemplate
+				file.Workflow = &remoteTemplate
 				file.RepositoryUpdateOptions.FileContent = &output
 				file.RepositoryUpdateOptions.Path = content.GetPath()
 				file.RepositoryUpdateOptions.SHA = content.GetSHA()

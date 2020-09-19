@@ -136,9 +136,9 @@ func TestSync_MergeWorkflow(t *testing.T) {
 						},
 						Strategy: Strategy{
 							Matrix: map[string]interface{}{
-								"node-version": []string{"11.x", "12.x", "14.x", "14.x"},
-								"include": []map[string]string{
-									{"node": "12"},
+								"node-version": []MatrixValue{"12.x", "14.x"},
+								"include": []MatrixValue{
+									map[string]string{"node": "12"},
 								},
 							},
 						},
@@ -177,10 +177,10 @@ func TestSync_MergeWorkflow(t *testing.T) {
 						},
 						Strategy: Strategy{
 							Matrix: map[string]interface{}{
-								"node-version": []string{"11.x", "12.x", "13.x"},
-								"include": []map[string]string{
-									{"node": "12", "os": "windows-latest"},
-									{"not_exist_in_src": "12"},
+								"node-version": []MatrixValue{"12.x", "13.x", "14.x"},
+								"include": []MatrixValue{
+									map[string]string{"node": "12", "os": "windows-latest"},
+									map[string]string{"not_exist_in_src": "12"},
 								},
 							},
 						},
@@ -225,10 +225,10 @@ func TestSync_MergeWorkflow(t *testing.T) {
 						},
 						Strategy: Strategy{
 							Matrix: Matrix{
-								"node-version": []string{"11.x", "12.x", "13.x"},
-								"include": []map[string]string{
-									{"node": "12", "os": "windows-latest"},
-									{"not_exist_in_src": "12"},
+								"node-version": []MatrixValue{"12.x", "13.x", "14.x"},
+								"include": []MatrixValue{
+									map[string]string{"node": "12", "os": "windows-latest"},
+									map[string]string{"not_exist_in_src": "12"},
 								},
 							},
 						},

@@ -11,12 +11,12 @@ type (
 	Outputs          = map[string]string
 	With             = map[string]string
 	Env              = map[string]string
-	IncludeExclude   = []map[string]string
-	Matrix           = map[string]interface{}
+	MatrixValue      = interface{}
 	Services         = map[string]*Service
 
 	Jobs = map[string]*Job
 
+	Matrix         = map[string]MatrixValue
 	GithubWorkflow struct {
 		Name     string   `yaml:"name,omitempty" json:"name,omitempty"`
 		On       On       `yaml:"on,omitempty" json:"on,omitempty"`
@@ -56,18 +56,6 @@ type (
 	}
 	Defaults struct {
 		Run Run `yaml:"run,omitempty" json:"run,omitempty"`
-	}
-	MatrixInclude struct {
-		Node         string `yaml:"node,omitempty" json:"node,omitempty"`
-		Os           string `yaml:"os,omitempty" json:"os,omitempty"`
-		Npm          string `yaml:"npm,omitempty" json:"npm,omitempty"`
-		Experimental string `yaml:"experimental,omitempty" json:"experimental,omitempty"`
-	}
-	MatrixExclude struct {
-		Node         string `yaml:"node,omitempty" json:"node,omitempty"`
-		Os           string `yaml:"os,omitempty" json:"os,omitempty"`
-		Npm          string `yaml:"npm,omitempty" json:"npm,omitempty"`
-		Experimental string `yaml:"experimental,omitempty" json:"experimental,omitempty"`
 	}
 
 	Strategy struct {
