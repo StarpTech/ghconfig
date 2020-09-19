@@ -13,12 +13,3 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    # Overwrite any ignores created using `@dependabot ignore` commands
-    ignore:
-      # Ignore updates to packages that start 'aws'
-      # Wildcards match zero or more arbitrary characters
-      - dependency-name: "aws*"
-      # Ignore some updates to the 'express' package
-      - dependency-name: "express"
-        # Ignore only new versions for 4.x and 5.x
-        versions: ["4.x", "5.x"]

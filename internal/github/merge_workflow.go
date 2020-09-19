@@ -7,9 +7,9 @@ import (
 	"github.com/imdario/mergo"
 )
 
-type timeTransformer struct{}
+type workflowTransformer struct{}
 
-func (t timeTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Value) error {
+func (t workflowTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Value) error {
 	if typ == reflect.TypeOf(Env{}) {
 		return func(dst, src reflect.Value) error {
 			if dst.CanSet() {
@@ -105,7 +105,7 @@ func (t timeTransformer) Transformer(typ reflect.Type) func(dst, src reflect.Val
 }
 
 func MergeWorkflow(dst *GithubWorkflow, src GithubWorkflow) error {
-	return mergo.MergeWithOverwrite(dst, src, mergo.WithTypeCheck, mergo.WithTransformers(timeTransformer{}))
+	return mergo.MergeWithOverwrite(dst, src, mergo.WithTypeCheck, mergo.WithTransformers(workflowTransformer{}))
 }
 
 func mergeJobs(src, dst *Job) {
@@ -201,7 +201,7 @@ func mergeJobSteps(src, dst *Job) {
 	}
 }
 
-func mergeJobStrategy(src, dst *Job) {
+func mergeJobStrategy(src, dst *Job) error {
 	if !src.Strategy.FailFast {
 		src.Strategy.FailFast = dst.Strategy.FailFast
 	}
@@ -212,7 +212,7 @@ func mergeJobStrategy(src, dst *Job) {
 
 	if len(src.Strategy.Matrix) == 0 {
 		src.Strategy.Matrix = dst.Strategy.Matrix
-		return
+		return nil
 	}
 
 	for srcKey, srcVal := range src.Strategy.Matrix {
@@ -226,12 +226,16 @@ func mergeJobStrategy(src, dst *Job) {
 								if dstArray, ok := dstVal.([]string); ok {
 									src.Strategy.Matrix[srcKey] = dstArray
 								}
+							} else {
+								return fmt.Errorf("dst.Strategy.Matrix[%s] can't be type asserted to []string", srcKey)
 							}
 						} else if _, ok := v.([]map[string]string); ok {
 							if dstArrayMap, ok := dstVal.([]map[string]string); ok {
 								if len(srcValType) == 0 {
 									src.Strategy.Matrix[srcKey] = dstArrayMap
 								}
+							} else {
+								return fmt.Errorf("dst.Strategy.Matrix[%s] can't be type asserted to []map[string]string", srcKey)
 							}
 						}
 					}
@@ -244,6 +248,7 @@ func mergeJobStrategy(src, dst *Job) {
 			}
 		}
 	}
+	return nil
 }
 
 func mergeJobContainer(src, dst *Job) {

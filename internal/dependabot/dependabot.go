@@ -1,8 +1,8 @@
 package dependabot
 
 type GithubDependabot struct {
-	Version string    `yaml:"version,omitempty" json:"version,omitempty"`
-	Updates []Updates `yaml:"updates,omitempty" json:"updates,omitempty"`
+	Version string     `yaml:"version,omitempty" json:"version,omitempty"`
+	Updates []*Updates `yaml:"updates,omitempty" json:"updates,omitempty"`
 }
 type Schedule struct {
 	Interval string `yaml:"interval,omitempty" json:"interval,omitempty"`

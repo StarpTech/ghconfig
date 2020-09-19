@@ -505,9 +505,9 @@ func prepareDependabot(
 		log.WithError(err).Error("could not template")
 		return nil, err
 	}
-	proceedTemplate := dependabot.GithubDependabot{}
+	localTemplate := dependabot.GithubDependabot{}
 	localYAMLData := bytesCache.Bytes()
-	err = yaml.Unmarshal(localYAMLData, &proceedTemplate)
+	err = yaml.Unmarshal(localYAMLData, &localTemplate)
 	if err != nil {
 		log.WithError(err).Error("could not unmarshal template")
 		return nil, err
@@ -562,48 +562,23 @@ func prepareDependabot(
 		return nil, err
 	}
 
-	remoteJsonData, err := json.Marshal(remoteTemplate)
+	err = dependabot.MergeDependabot(&remoteTemplate, localTemplate)
+	if err != nil {
+		log.WithError(err).Error("could merge dependabot template")
+		return nil, err
+	}
+
+	output, err := yaml.Marshal(remoteTemplate)
 	if err != nil {
 		log.WithError(err).Error("could not marshal template")
-		return nil, err
-	}
-
-	localJsonData, err := json.Marshal(dependabotTemplate)
-	if err != nil {
-		log.WithError(err).Error("could not marshal template")
-		return nil, err
-	}
-
-	patch, err := jsonpatch.CreateMergePatch(remoteJsonData, localJsonData)
-	if err != nil {
-		log.WithError(err).Error("could not create merge patch")
-		return nil, err
-	}
-
-	combinedPatch, err := jsonpatch.MergePatch(remoteJsonData, patch)
-	if err != nil {
-		log.WithError(err).Error("could not merge patch")
-		return nil, err
-	}
-
-	withoutCombinedPatch, err := jsonpatch.MergePatch(remoteJsonData, combinedPatch)
-	if err != nil {
-		log.WithError(err).Error("could not merge patch")
-		return nil, err
-	}
-
-	mergedGithubDependabot := dependabot.GithubDependabot{}
-	err = yaml.Unmarshal(withoutCombinedPatch, &mergedGithubDependabot)
-	if err != nil {
-		log.WithError(err).Error("could not unmarshal template")
 		return nil, err
 	}
 
 	file.RepositoryUpdateOptions = &config.RepositoryFileUpdateOptions{}
 	file.RepositoryUpdateOptions.Filename = content.GetName()
 	file.RepositoryUpdateOptions.DisplayName = file.RepositoryUpdateOptions.Filename
-	file.Dependabot = &mergedGithubDependabot
-	file.RepositoryUpdateOptions.FileContent = &localYAMLData
+	file.Dependabot = &remoteTemplate
+	file.RepositoryUpdateOptions.FileContent = &output
 	file.RepositoryUpdateOptions.Path = content.GetPath()
 	file.RepositoryUpdateOptions.SHA = content.GetSHA()
 

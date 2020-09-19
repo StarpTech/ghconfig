@@ -325,16 +325,21 @@ func TestSync_WorkflowExistOnRemote(t *testing.T) {
 	})
 	mux.HandleFunc("/download/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		fmt.Fprint(w, `{
-			"name": "patch",
-			"env": { "foo": "bar" },
-			"jobs": {
+		bytes, _ := yaml.Marshal(&gh.GithubWorkflow{
+			Name: "patch",
+			Env: map[string]string{
+				"foo": "bar",
+			},
+			Jobs: map[string]*gh.Job{
 				"build": {
-					"name": "Node ${{ matrix.node-version }}",
-					"steps": [{ "name": "install", "run": "npm install", "with": { "a": "b" } }] 
-				}
-			}
-		}`)
+					Name: "Node ${{ matrix.node-version }}",
+					Steps: []*gh.Step{
+						{Name: "install", Run: "npm install", With: map[string]string{"a": "b"}},
+					},
+				},
+			},
+		})
+		fmt.Fprint(w, string(bytes))
 	})
 
 	ctx := context.Background()
@@ -857,6 +862,28 @@ func TestSync_DependabotExistOnRemote(t *testing.T) {
 				"download_url": "`+serverURL+baseURLPath+`/download/.github/dependabot.yml"
 			  }`)
 		case "PUT":
+			d := readDependabot(r.Body)
+			output := dependabot.GithubDependabot{
+				Version: "2",
+				Updates: []*dependabot.Updates{
+					{
+						Directory:             "/",
+						PackageEcosystem:      "docker",
+						OpenPullRequestsLimit: "0",
+						Schedule: dependabot.Schedule{
+							Interval: "weekly",
+						},
+					},
+					{
+						Directory:        "/",
+						PackageEcosystem: "npm",
+						Schedule: dependabot.Schedule{
+							Interval: "daily",
+						},
+					},
+				},
+			}
+			assert.EqualValues(t, d, output)
 			fmt.Fprint(w, `
 			{
 				"content":{
@@ -876,6 +903,11 @@ func TestSync_DependabotExistOnRemote(t *testing.T) {
 		testMethod(t, r, "GET")
 		bytes, _ := yaml.Marshal(&dependabot.GithubDependabot{
 			Version: "1",
+			Updates: []*dependabot.Updates{
+				{
+					Directory: "/foo",
+				},
+			},
 		})
 		fmt.Fprint(w, string(bytes))
 	})

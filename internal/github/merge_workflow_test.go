@@ -19,7 +19,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 	// src: templated local worklfow
 	testcases := []testCase{
 		{
-			Description: "Dst is always overriden with Src",
+			Description: "Dst is always overriden by Src",
 			Dst: GithubWorkflow{
 				Env: map[string]string{
 					"token": "123",

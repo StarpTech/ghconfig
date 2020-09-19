@@ -85,7 +85,6 @@ func readWorkflow(r io.ReadCloser) gh.GithubWorkflow {
 	bytes, _ := ioutil.ReadAll(r)
 	json.Unmarshal(bytes, &result)
 	sDec, _ := base64.StdEncoding.DecodeString(result["content"])
-	fmt.Println(string(sDec))
 	t := gh.GithubWorkflow{}
 	yaml.Unmarshal(sDec, &t)
 	return t
