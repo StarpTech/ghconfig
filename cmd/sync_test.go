@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"ghconfig/internal/config"
 	"ghconfig/internal/dependabot"
+	gh "ghconfig/internal/github"
 	"net/http"
 	"reflect"
 	"testing"
@@ -256,11 +257,56 @@ func TestSync_WorkflowExistOnRemote(t *testing.T) {
 			  }`)
 		case "PUT":
 			wf := readWorkflow(r.Body)
-			assert.Equal(t, wf.Name, "Node CI")
-			assert.Equal(t, wf.Env["foo"], "bar")
-			assert.EqualValues(t, wf.Jobs["build"].Strategy.Matrix.NodeVersion, []string{"11.x", "12.x", "14.x"})
-			assert.NotNil(t, wf.Jobs["build"])
-			assert.Equal(t, len(wf.Jobs["build"].Steps), 4)
+
+			output := gh.GithubWorkflow{
+				On: gh.On{
+					Push: gh.Push{
+						PathsIgnore: []string{"**.md", "docs/**"},
+					},
+					PullRequest: gh.PullRequest{
+						PathsIgnore: []string{"**.md", "docs/**"},
+					},
+				},
+				Env: map[string]string{
+					"A":  "o/r",
+					"CI": "true",
+				},
+				Name: "Node CI",
+				Jobs: map[string]*gh.Job{
+					"build": {
+						Name:   "Node ${{ matrix.node-version }}",
+						RunsOn: "${{ matrix.os }}",
+						Needs:  gh.StringArray{"a"},
+						Steps: []*gh.Step{
+							{Uses: "actions/checkout@v2"},
+							{
+								Name: "Use Node.js ${{ matrix.node-version }}",
+								Uses: "actions/setup-node@v1",
+								With: map[string]string{
+									"node-version": "${{ matrix.node-version }}",
+								},
+							},
+							{
+								Name: "install",
+								Run:  "yarn install\n",
+								With: map[string]string{
+									"a": "b",
+								},
+							},
+
+							{Name: "test", Run: "yarn test"},
+						},
+						Strategy: gh.Strategy{
+							Matrix: gh.Matrix{
+								"os":           []gh.MatrixValue{"ubuntu-latest"},
+								"node-version": []gh.MatrixValue{"11.x", "12.x", "14.x"},
+							},
+						},
+					},
+				},
+			}
+
+			assert.EqualValues(t, wf, output)
 
 			fmt.Fprint(w, `
 			{
@@ -279,16 +325,21 @@ func TestSync_WorkflowExistOnRemote(t *testing.T) {
 	})
 	mux.HandleFunc("/download/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		fmt.Fprint(w, `{
-			"name": "patch",
-			"env": { "foo": "bar" },
-			"jobs": {
+		bytes, _ := yaml.Marshal(&gh.GithubWorkflow{
+			Name: "patch",
+			Env: map[string]string{
+				"foo": "bar",
+			},
+			Jobs: map[string]*gh.Job{
 				"build": {
-					"name": "build",
-					"steps": [{ "name": "ferfr", "run": "npm install" }] 
-				}
-			}
-		}`)
+					Name: "Node ${{ matrix.node-version }}",
+					Steps: []*gh.Step{
+						{Name: "install", Run: "npm install", With: map[string]string{"a": "b"}},
+					},
+				},
+			},
+		})
+		fmt.Fprint(w, string(bytes))
 	})
 
 	ctx := context.Background()
@@ -510,7 +561,10 @@ func TestSync_JSONPatch(t *testing.T) {
 	})
 	mux.HandleFunc("/download/.github/workflows/ci.yaml", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
-		fmt.Fprint(w, "name: foo")
+		bytes, _ := yaml.Marshal(&gh.GithubWorkflow{
+			Name: "foo",
+		})
+		fmt.Fprint(w, string(bytes))
 	})
 
 	args := &createRefRequest{
@@ -567,6 +621,7 @@ func TestSync_JSONPatch(t *testing.T) {
 		Sid:             sid,
 		CreatePR:        true,
 		RepositoryQuery: "o in:name",
+		PatchOnly:       true,
 		RootDir:         "../test/fixture/simple-patch",
 	}
 
@@ -811,6 +866,28 @@ func TestSync_DependabotExistOnRemote(t *testing.T) {
 				"download_url": "`+serverURL+baseURLPath+`/download/.github/dependabot.yml"
 			  }`)
 		case "PUT":
+			d := readDependabot(r.Body)
+			output := dependabot.GithubDependabot{
+				Version: "2",
+				Updates: []*dependabot.Updates{
+					{
+						Directory:             "/",
+						PackageEcosystem:      "docker",
+						OpenPullRequestsLimit: 0,
+						Schedule: dependabot.Schedule{
+							Interval: "weekly",
+						},
+					},
+					{
+						Directory:        "/",
+						PackageEcosystem: "npm",
+						Schedule: dependabot.Schedule{
+							Interval: "daily",
+						},
+					},
+				},
+			}
+			assert.EqualValues(t, d, output)
 			fmt.Fprint(w, `
 			{
 				"content":{
@@ -830,6 +907,11 @@ func TestSync_DependabotExistOnRemote(t *testing.T) {
 		testMethod(t, r, "GET")
 		bytes, _ := yaml.Marshal(&dependabot.GithubDependabot{
 			Version: "1",
+			Updates: []*dependabot.Updates{
+				{
+					Directory: "/foo",
+				},
+			},
 		})
 		fmt.Fprint(w, string(bytes))
 	})
