@@ -2,6 +2,7 @@ package dependabot
 
 import (
 	"fmt"
+	"ghconfig/internal/common"
 	"reflect"
 
 	"github.com/imdario/mergo"
@@ -63,24 +64,24 @@ func mergeUpdates(src, dst *Updates) {
 	if src.OpenPullRequestsLimit == 0 {
 		src.OpenPullRequestsLimit = dst.OpenPullRequestsLimit
 	}
+
 	if len(src.Ignore) == 0 {
 		src.Ignore = dst.Ignore
 	}
-	if len(src.Assignees) == 0 {
-		src.Assignees = dst.Assignees
+	for _, srcIgnore := range src.Ignore {
+		for _, dstIgnore := range dst.Ignore {
+			if srcIgnore.DependencyName == dstIgnore.DependencyName {
+				srcIgnore.Versions = common.Unique(srcIgnore.Versions, dstIgnore.Versions)
+			}
+		}
 	}
-	if len(src.Labels) == 0 {
-		src.Labels = dst.Labels
-	}
-	if len(src.Reviewers) == 0 {
-		src.Reviewers = dst.Reviewers
-	}
-	if len(src.TargetBranch) == 0 {
-		src.TargetBranch = dst.TargetBranch
-	}
-	if len(src.VersioningStrategy) == 0 {
-		src.VersioningStrategy = dst.VersioningStrategy
-	}
+
+	src.Assignees = common.Unique(src.Assignees, dst.Assignees)
+	src.Labels = common.Unique(src.Labels, dst.Labels)
+	src.Reviewers = common.Unique(src.Reviewers, dst.Reviewers)
+	src.TargetBranch = common.Unique(src.TargetBranch, dst.TargetBranch)
+	src.VersioningStrategy = common.Unique(src.VersioningStrategy, dst.VersioningStrategy)
+
 	if len(src.Allow) == 0 {
 		src.Allow = dst.Allow
 	}

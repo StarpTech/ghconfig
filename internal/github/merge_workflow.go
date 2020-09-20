@@ -2,6 +2,7 @@ package github
 
 import (
 	"fmt"
+	"ghconfig/internal/common"
 	"reflect"
 
 	"github.com/imdario/mergo"
@@ -13,7 +14,16 @@ func (t workflowTransformer) Transformer(typ reflect.Type) func(dst, src reflect
 	if typ == reflect.TypeOf(Env{}) {
 		return func(dst, src reflect.Value) error {
 			if dst.CanSet() {
-				dst.Set(src)
+				dstEnv, ok := dst.Interface().(Env)
+				if !ok {
+					return fmt.Errorf("expect dst to be type of Env, actual: %s", reflect.TypeOf(dstEnv).Name())
+				}
+				srcEnv, ok := src.Interface().(Env)
+				if !ok {
+					return fmt.Errorf("expect src to be type of Env, actual: %s", reflect.TypeOf(srcEnv).Name())
+				}
+				merge := common.MergeStringMap(srcEnv, dstEnv)
+				dst.Set(reflect.ValueOf(merge))
 			}
 			return nil
 		}
@@ -33,41 +43,15 @@ func (t workflowTransformer) Transformer(typ reflect.Type) func(dst, src reflect
 					srcOn.PageBuild = dstOn.PageBuild
 				}
 
-				if len(srcOn.Release.Types) == 0 {
-					srcOn.Release.Types = dstOn.Release.Types
-				}
-
-				if len(srcOn.Push.Branches) == 0 {
-					srcOn.Push.Branches = dstOn.Push.Branches
-				}
-
-				if len(srcOn.Push.TagsIgnore) == 0 {
-					srcOn.Push.TagsIgnore = dstOn.Push.TagsIgnore
-				}
-
-				if len(srcOn.Push.Tags) == 0 {
-					srcOn.Push.Tags = dstOn.Push.Tags
-				}
-
-				if len(srcOn.Push.PathsIgnore) == 0 {
-					srcOn.Push.PathsIgnore = dstOn.Push.PathsIgnore
-				}
-
-				if len(srcOn.PullRequest.Branches) == 0 {
-					srcOn.PullRequest.Branches = dstOn.PullRequest.Branches
-				}
-
-				if len(srcOn.PullRequest.PathsIgnore) == 0 {
-					srcOn.PullRequest.PathsIgnore = dstOn.PullRequest.PathsIgnore
-				}
-
-				if len(srcOn.PullRequest.Tags) == 0 {
-					srcOn.PullRequest.Tags = dstOn.PullRequest.Tags
-				}
-
-				if len(srcOn.PullRequest.TagsIgnore) == 0 {
-					srcOn.PullRequest.TagsIgnore = dstOn.PullRequest.TagsIgnore
-				}
+				srcOn.Release.Types = common.Unique(srcOn.Release.Types, dstOn.Release.Types)
+				srcOn.Push.Branches = common.Unique(srcOn.Push.Branches, dstOn.Push.Branches)
+				srcOn.Push.TagsIgnore = common.Unique(srcOn.Push.TagsIgnore, dstOn.Push.TagsIgnore)
+				srcOn.Push.Tags = common.Unique(srcOn.Push.Tags, dstOn.Push.Tags)
+				srcOn.Push.PathsIgnore = common.Unique(srcOn.Push.PathsIgnore, dstOn.Push.PathsIgnore)
+				srcOn.PullRequest.Branches = common.Unique(srcOn.PullRequest.Branches, dstOn.PullRequest.Branches)
+				srcOn.PullRequest.PathsIgnore = common.Unique(srcOn.PullRequest.PathsIgnore, dstOn.PullRequest.PathsIgnore)
+				srcOn.PullRequest.Tags = common.Unique(srcOn.PullRequest.Tags, dstOn.PullRequest.Tags)
+				srcOn.PullRequest.TagsIgnore = common.Unique(srcOn.PullRequest.TagsIgnore, dstOn.PullRequest.TagsIgnore)
 
 				if len(srcOn.Schedule) == 0 {
 					srcOn.Schedule = dstOn.Schedule
@@ -110,21 +94,14 @@ func MergeWorkflow(dst *GithubWorkflow, src GithubWorkflow) error {
 	return mergo.MergeWithOverwrite(dst, src,
 		mergo.WithTypeCheck,
 		mergo.WithTransformers(workflowTransformer{}),
-		mergo.WithOverwriteWithEmptyValue,
-		mergo.WithOverrideEmptySlice,
 	)
 }
 
 func mergeJobs(src, dst *Job) error {
-	if len(src.Env) == 0 {
-		src.Env = dst.Env
-	}
-	if len(src.Needs) == 0 {
-		src.Needs = dst.Needs
-	}
-	if len(src.Outputs) == 0 {
-		src.Outputs = dst.Outputs
-	}
+	src.Env = common.MergeStringMap(dst.Env, src.Env)
+	src.Needs = common.Unique(src.Needs, dst.Needs)
+	src.Outputs = common.MergeStringMap(dst.Outputs, src.Outputs)
+
 	if src.RunsOn == "" {
 		src.RunsOn = dst.RunsOn
 	}
@@ -263,15 +240,9 @@ func mergeJobStrategy(src, dst *Job) error {
 }
 
 func mergeJobContainer(src, dst *Job) {
-	if len(src.Container.Env) == 0 {
-		src.Container.Env = dst.Container.Env
-	}
-	if len(src.Container.Ports) == 0 {
-		src.Container.Ports = dst.Container.Ports
-	}
-	if len(src.Container.Volumes) == 0 {
-		src.Container.Volumes = dst.Container.Volumes
-	}
+	src.Container.Env = common.MergeStringMap(dst.Container.Env, src.Container.Env)
+	src.Container.Ports = common.Unique(src.Container.Ports, dst.Container.Ports)
+	src.Container.Volumes = common.MergeStringMap(src.Container.Volumes, dst.Container.Volumes)
 	if src.Container.Image == "" {
 		src.Container.Image = dst.Container.Image
 	}
@@ -281,15 +252,9 @@ func mergeJobServices(src, dst *Job) {
 	for srcKey, srcSvc := range src.Services {
 		for dstKey, dstSvc := range dst.Services {
 			if srcKey == dstKey {
-				if len(srcSvc.Ports) == 0 {
-					srcSvc.Ports = dstSvc.Ports
-				}
-				if len(srcSvc.Env) == 0 {
-					srcSvc.Env = dstSvc.Env
-				}
-				if len(srcSvc.Volumes) == 0 {
-					srcSvc.Volumes = dstSvc.Volumes
-				}
+				srcSvc.Ports = common.Unique(srcSvc.Ports, dstSvc.Ports)
+				srcSvc.Env = common.MergeStringMap(srcSvc.Env, dstSvc.Env)
+				srcSvc.Volumes = common.MergeStringMap(srcSvc.Volumes, dstSvc.Volumes)
 				if srcSvc.Image == "" {
 					srcSvc.Image = dstSvc.Image
 				}

@@ -25,12 +25,15 @@ func TestSync_MergeDependabot(t *testing.T) {
 				Updates: []*Updates{
 					{
 						Directory: "/foo",
-						Ignore: []Ignore{
+						Ignore: []*Ignore{
 							{DependencyName: "dep", Versions: []string{"1.0.0", "2.0.0"}},
 						},
 					},
 					{
 						Directory: "/bar",
+						Ignore: []*Ignore{
+							{DependencyName: "dep", Versions: []string{"1.0.0"}},
+						},
 					},
 					{
 						Directory:        "/bar",
@@ -50,6 +53,9 @@ func TestSync_MergeDependabot(t *testing.T) {
 					},
 					{
 						Directory: "/bar",
+						Ignore: []*Ignore{
+							{DependencyName: "dep", Versions: []string{"2.0.0"}},
+						},
 					},
 				},
 			},
@@ -59,7 +65,7 @@ func TestSync_MergeDependabot(t *testing.T) {
 					{
 						Directory:             "/foo",
 						OpenPullRequestsLimit: 5,
-						Ignore: []Ignore{
+						Ignore: []*Ignore{
 							{DependencyName: "dep", Versions: []string{"1.0.0", "2.0.0"}},
 						},
 					},
@@ -68,6 +74,9 @@ func TestSync_MergeDependabot(t *testing.T) {
 					},
 					{
 						Directory: "/bar",
+						Ignore: []*Ignore{
+							{DependencyName: "dep", Versions: []string{"1.0.0", "2.0.0"}},
+						},
 					},
 				},
 			},

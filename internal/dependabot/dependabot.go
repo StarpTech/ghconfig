@@ -32,12 +32,12 @@ type Updates struct {
 	Directory             string        `yaml:"directory,omitempty" json:"directory,omitempty"`
 	Schedule              Schedule      `yaml:"schedule,omitempty" json:"schedule,omitempty"`
 	OpenPullRequestsLimit int           `yaml:"open-pull-requests-limit,omitempty" json:"open-pull-requests-limit,omitempty"`
-	Ignore                []Ignore      `yaml:"ignore,omitempty" json:"ignore,omitempty"`
+	Ignore                []*Ignore     `yaml:"ignore,omitempty" json:"ignore,omitempty"`
 	Labels                []string      `yaml:"labels,omitempty" json:"labels,omitempty"`
 	Milestone             string        `yaml:"milestone,omitempty" json:"milestone,omitempty"`
 	PullRequestBranchName string        `yaml:"pull-request-branch-name,omitempty" json:"pull-request-branch-name,omitempty"`
 	RebaseStrategy        string        `yaml:"rebase-strategy,omitempty" json:"rebase-strategy,omitempty"`
-	Allow                 []Allow       `yaml:"allow,omitempty" json:"allow,omitempty"`
+	Allow                 []*Allow      `yaml:"allow,omitempty" json:"allow,omitempty"`
 	CommitMessage         CommitMessage `yaml:"commit-message,omitempty" json:"commit-message,omitempty"`
 	Assignees             []string      `yaml:"assignees,omitempty" json:"assignees,omitempty"`
 	Reviewers             []string      `yaml:"reviewers,omitempty" json:"reviewers,omitempty"`

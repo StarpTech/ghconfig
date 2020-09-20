@@ -19,7 +19,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 	// src: templated local worklfow
 	testcases := []testCase{
 		{
-			Description: "Dst is always overriden by Src",
+			Description: "Primitive and array values are overriden by Src",
 			Dst: GithubWorkflow{
 				Env: map[string]string{
 					"token": "123",
@@ -35,12 +35,13 @@ func TestSync_MergeWorkflow(t *testing.T) {
 			Output: GithubWorkflow{
 				Env: map[string]string{
 					"existing": "223",
+					"token":    "123",
 				},
 				Name: "name_src",
 			},
 		},
 		{
-			Description: "Dst fields are preserved when their fields are related and Src is empty",
+			Description: "Dst fields are preserved when their fields reference to the same entity and Src is empty",
 			Dst: GithubWorkflow{
 				Jobs: map[string]*Job{
 					"build": {
@@ -60,27 +61,6 @@ func TestSync_MergeWorkflow(t *testing.T) {
 					"build": {
 						If: "if",
 					},
-				},
-				Name: "name_src",
-			},
-		},
-		{
-			Description: "Dst is always overriden by Src",
-			Dst: GithubWorkflow{
-				Env: map[string]string{
-					"token": "123",
-				},
-				Name: "name_dst",
-			},
-			Src: GithubWorkflow{
-				Env: map[string]string{
-					"existing": "223",
-				},
-				Name: "name_src",
-			},
-			Output: GithubWorkflow{
-				Env: map[string]string{
-					"existing": "223",
 				},
 				Name: "name_src",
 			},
@@ -102,11 +82,8 @@ func TestSync_MergeWorkflow(t *testing.T) {
 			},
 		},
 		{
-			Description: "Src will always overwrite objects that doesn't relate to each other",
+			Description: "Src will always overwrite objects that doesn't reference to the same entity in Dst",
 			Dst: GithubWorkflow{
-				Env: map[string]string{
-					"a": "1",
-				},
 				On: On{
 					Schedule: []Schedule{
 						{Cron: "cron"},
@@ -115,7 +92,6 @@ func TestSync_MergeWorkflow(t *testing.T) {
 				Name: "name_dst",
 			},
 			Src: GithubWorkflow{
-				Env: map[string]string{},
 				On: On{
 					Schedule: []Schedule{
 						{Cron: ""},
@@ -124,7 +100,6 @@ func TestSync_MergeWorkflow(t *testing.T) {
 				Name: "name_src",
 			},
 			Output: GithubWorkflow{
-				Env: map[string]string{},
 				On: On{
 					Schedule: []Schedule{
 						{Cron: ""},
@@ -249,6 +224,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 				On: On{
 					PageBuild: "pageBuild",
 					Push: Push{
+						Branches:    []string{"feature"},
 						PathsIgnore: []string{"docs/*"},
 					},
 					Schedule: []Schedule{
@@ -288,12 +264,13 @@ func TestSync_MergeWorkflow(t *testing.T) {
 			Output: GithubWorkflow{
 				Env: map[string]string{
 					"existing": "223",
+					"token":    "123",
 				},
 				Name: "name_src",
 				On: On{
 					PageBuild: "pageBuild",
 					Push: Push{
-						Branches:    []string{"master"},
+						Branches:    []string{"feature", "master"},
 						PathsIgnore: []string{"docs/*"},
 					},
 					PullRequest: PullRequest{
@@ -309,7 +286,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 						Name: "build",
 						If:   "if",
 						Services: map[string]*Service{
-							"svc":  {Ports: []string{"8080", "9090", "4040"}},
+							"svc":  {Ports: []string{"4040", "8080", "8081", "9090"}},
 							"svc3": {Ports: []string{"8081", "9090"}},
 						},
 						Steps: []*Step{
