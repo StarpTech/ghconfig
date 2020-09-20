@@ -40,6 +40,100 @@ func TestSync_MergeWorkflow(t *testing.T) {
 			},
 		},
 		{
+			Description: "Dst fields are preserved when their fields are related and Src is empty",
+			Dst: GithubWorkflow{
+				Jobs: map[string]*Job{
+					"build": {
+						If: "if",
+					},
+				},
+				Name: "name_dst",
+			},
+			Src: GithubWorkflow{
+				Jobs: map[string]*Job{
+					"build": {},
+				},
+				Name: "name_src",
+			},
+			Output: GithubWorkflow{
+				Jobs: map[string]*Job{
+					"build": {
+						If: "if",
+					},
+				},
+				Name: "name_src",
+			},
+		},
+		{
+			Description: "Dst is always overriden by Src",
+			Dst: GithubWorkflow{
+				Env: map[string]string{
+					"token": "123",
+				},
+				Name: "name_dst",
+			},
+			Src: GithubWorkflow{
+				Env: map[string]string{
+					"existing": "223",
+				},
+				Name: "name_src",
+			},
+			Output: GithubWorkflow{
+				Env: map[string]string{
+					"existing": "223",
+				},
+				Name: "name_src",
+			},
+		},
+		{
+			Description: "Empty dst",
+			Dst:         GithubWorkflow{},
+			Src: GithubWorkflow{
+				Jobs: map[string]*Job{
+					"build": {},
+				},
+				Name: "name_src",
+			},
+			Output: GithubWorkflow{
+				Jobs: map[string]*Job{
+					"build": {},
+				},
+				Name: "name_src",
+			},
+		},
+		{
+			Description: "Src will always overwrite objects that doesn't relate to each other",
+			Dst: GithubWorkflow{
+				Env: map[string]string{
+					"a": "1",
+				},
+				On: On{
+					Schedule: []Schedule{
+						{Cron: "cron"},
+					},
+				},
+				Name: "name_dst",
+			},
+			Src: GithubWorkflow{
+				Env: map[string]string{},
+				On: On{
+					Schedule: []Schedule{
+						{Cron: ""},
+					},
+				},
+				Name: "name_src",
+			},
+			Output: GithubWorkflow{
+				Env: map[string]string{},
+				On: On{
+					Schedule: []Schedule{
+						{Cron: ""},
+					},
+				},
+				Name: "name_src",
+			},
+		},
+		{
 			Description: "Steps from same Job with the same (name or id or properties) are merged. No steps from dst are appended.",
 			Dst: GithubWorkflow{
 				Jobs: map[string]*Job{

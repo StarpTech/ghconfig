@@ -92,7 +92,9 @@ func (t workflowTransformer) Transformer(typ reflect.Type) func(dst, src reflect
 				for sk, sj := range srcJobs {
 					for dk, dj := range dstJobs {
 						if sk == dk {
-							mergeJobs(sj, dj)
+							if err := mergeJobs(sj, dj); err != nil {
+								return err
+							}
 						}
 					}
 					dst.SetMapIndex(reflect.ValueOf(sk), reflect.ValueOf(sj))
@@ -105,10 +107,15 @@ func (t workflowTransformer) Transformer(typ reflect.Type) func(dst, src reflect
 }
 
 func MergeWorkflow(dst *GithubWorkflow, src GithubWorkflow) error {
-	return mergo.MergeWithOverwrite(dst, src, mergo.WithTypeCheck, mergo.WithTransformers(workflowTransformer{}))
+	return mergo.MergeWithOverwrite(dst, src,
+		mergo.WithTypeCheck,
+		mergo.WithTransformers(workflowTransformer{}),
+		mergo.WithOverwriteWithEmptyValue,
+		mergo.WithOverrideEmptySlice,
+	)
 }
 
-func mergeJobs(src, dst *Job) {
+func mergeJobs(src, dst *Job) error {
 	if len(src.Env) == 0 {
 		src.Env = dst.Env
 	}
@@ -137,7 +144,9 @@ func mergeJobs(src, dst *Job) {
 		src.Defaults.Run.Shell = dst.Defaults.Run.Shell
 	}
 
-	mergeJobStrategy(src, dst)
+	if err := mergeJobStrategy(src, dst); err != nil {
+		return err
+	}
 
 	mergeJobContainer(src, dst)
 
@@ -152,6 +161,8 @@ func mergeJobs(src, dst *Job) {
 	} else {
 		mergeJobSteps(src, dst)
 	}
+
+	return nil
 }
 
 func isSameStep(a, b *Step) bool {

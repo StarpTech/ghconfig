@@ -10,12 +10,12 @@
 
 Managing Workflow and Dependabot files can be in organizations very exhausting because there is no way to apply changes in a batch.
 
-- You need to adjust your compatibility matrix from `[13.x]` to `[14.x]` on 50 Repositories?
+- You need to adjust your compatibility matrix from `13.x` to `14.x` on 50 Repositories?
 - You want to standardize your CI?
 
 No problem, `ghconfig` helps you to automate such tasks. You have two options:
 
-- Strategic Merge of your local and remote files. Your local state will always overwrite the remote state, unless the change can be merged idempotent.
+- Strategic two-way merge of your local and remote files.
 - Apply a [RFC6902 JSON patch](http://tools.ietf.org/html/rfc6902) on a remote workflow file.
 
 By default a Pull-Request is created for all changes on a repository.
@@ -41,42 +41,6 @@ Ghconfig looks for a folder `.ghconfig` in the root of your repository.
 
 This directory follows the same structure as your `.github` folder. All files are handled as a [Go template](https://golang.org/pkg/text/template/) and you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and to all utility functions of [sprig](http://masterminds.github.io/sprig/).
 
-## Examples:
-
-Sync your workflow and the dependabot file:
-```
-$ ghconfig sync
-
-? Please select all repositories:  [Use arrows to move, space to select, <right> to all, <left> to none, type to filter]
-> [X]  StarpTech/shikaka
-
-Repository         Files                 Url
-----------         -----                 ---
-StarpTech/shikaka  ci.yaml               https://github.com/StarpTech/shikaka/pull/X
-                   dependabot.yml
-
-sync took 1211.0006ms
-```
-
-Apply a single patch on the workflow `release.yml`:
-```
-$ ghconfig patch
-
-? Please select all repositories:  [Use arrows to move, space to select, <right> to all, <left> to none, type to filter]
-> [X]  StarpTech/shikaka
-
-? Please select all repositories: StarpTech/shikaka
-
-Repository         Files                  Url        
-----------         -----                  ---        
-StarpTech/shikaka  release.yml (patched)  https://github.com/StarpTech/shikaka/pull/X
-      
-sync took 400.1179ms
-```
-
-## We want your feedback
-
-We'd love to hear your feedback about ghconfig. If you spot bugs or have features that you'd really like to see in ghconfig, please check out the [contributing page](./.github/CONTRIBUTING.md).
 
 ## Usage
 
@@ -88,10 +52,24 @@ We'd love to hear your feedback about ghconfig. If you spot bugs or have feature
 - `ghconfig sync --root-dir=different-ghconfig-root`
 - `ghconfig sync --dry-run`
 
+## Merge semantic
+
+- **Adding:** Fields present in the local template that are missing from the remote template will be added to the remote template.
+
+- **Updating:** Fields present in the local template will be merged recursively until a primitive field is updated, or a field is added. Primitive fields present in the remote template are preserved when fields address the same entity and the fields in the local template are empty.
+
+- **Deleting:** Fields present in the remote template that have been removed from the local template will be deleted from the remote template unless fields address the same entity.
+
+In all scenarios we try to preserve fields which belongs to the same entity. This is the case for Jobs and Steps (with Name or ID field) You can start from scratch when you delete the remote file. The current merging strategy doesn't envisage updating remote files manually.
+
 ## Installation
 
 Ensure that your personal access token is exported with `GITHUB_TOKEN`.
 You can [download](https://github.com/starptech/ghconfig/releases) `ghconfig` from Github.
+
+## We want your feedback
+
+We'd love to hear your feedback about ghconfig. If you spot bugs or have features that you'd really like to see in ghconfig, please check out the [contributing page](./.github/CONTRIBUTING.md).
 
 ## Rate Limiting
 
