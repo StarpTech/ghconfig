@@ -2,12 +2,12 @@ package common
 
 import "sort"
 
-func MergeStringMap(a, b map[string]string) map[string]string {
-	for k, v := range a {
-		b[k] = v
+func MergeStringMap(src, dst map[string]string) map[string]string {
+	for k, v := range src {
+		dst[k] = v
 	}
 
-	return b
+	return dst
 }
 
 func Unique(a, b []string) []string {

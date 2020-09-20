@@ -61,7 +61,7 @@ This directory follows the same structure as your `.github` folder. All files ar
 
 - **Adding:** Fields present in the local template that are missing from the remote template will be added to the remote template.
 
-- **Updating:** Fields present in the local template will be merged recursively until a primitive field is updated, or a field is added. Primitive Values, Maps and string arrays present in the remote template are preserved.
+- **Updating:** Fields present in the local template will be merged recursively until a primitive field is updated, or a field is added. Primitive Values, Maps and string arrays present in the remote template are merged without duplicates.
 
 - **Deleting:** Fields present in the remote template that have been removed from the local template will not be deleted from the remote template because the remote template is used as fallback. If you want to delete a field you have to delete it first on the remote template. You could apply a JSON-patch to do it.
 

@@ -109,9 +109,9 @@ func MergeWorkflow(dst *GithubWorkflow, src GithubWorkflow) error {
 }
 
 func mergeJobs(src, dst *Job) {
-	src.Env = common.MergeStringMap(dst.Env, src.Env)
+	src.Env = common.MergeStringMap(src.Env, dst.Env)
 	src.Needs = common.Unique(src.Needs, dst.Needs)
-	src.Outputs = common.MergeStringMap(dst.Outputs, src.Outputs)
+	src.Outputs = common.MergeStringMap(src.Outputs, dst.Outputs)
 
 	if src.RunsOn == "" {
 		src.RunsOn = dst.RunsOn
@@ -243,7 +243,7 @@ func mergeJobStrategy(src, dst *Job) {
 }
 
 func mergeJobContainer(src, dst *Job) {
-	src.Container.Env = common.MergeStringMap(dst.Container.Env, src.Container.Env)
+	src.Container.Env = common.MergeStringMap(src.Container.Env, dst.Container.Env)
 	src.Container.Ports = common.Unique(src.Container.Ports, dst.Container.Ports)
 	src.Container.Volumes = common.MergeStringMap(src.Container.Volumes, dst.Container.Volumes)
 	if src.Container.Image == "" {
