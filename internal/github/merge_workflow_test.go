@@ -82,10 +82,11 @@ func TestSync_MergeWorkflow(t *testing.T) {
 			},
 		},
 		{
-			Description: "Src will always overwrite objects that doesn't reference to the same entity in Dst",
+			Description: "Merge Schedules",
 			Dst: GithubWorkflow{
 				On: On{
 					Schedule: []Schedule{
+						{Cron: "cron"},
 						{Cron: "cron"},
 					},
 				},
@@ -95,6 +96,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 				On: On{
 					Schedule: []Schedule{
 						{Cron: ""},
+						{Cron: "cro2"},
 					},
 				},
 				Name: "name_src",
@@ -102,7 +104,8 @@ func TestSync_MergeWorkflow(t *testing.T) {
 			Output: GithubWorkflow{
 				On: On{
 					Schedule: []Schedule{
-						{Cron: ""},
+						{Cron: "cron"},
+						{Cron: "cro2"},
 					},
 				},
 				Name: "name_src",
@@ -278,6 +281,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 						Branches: []string{"master"},
 					},
 					Schedule: []Schedule{
+						{Cron: "not_added"},
 						{Cron: "123"},
 						{Cron: "12345"},
 					},

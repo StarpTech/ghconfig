@@ -55,6 +55,18 @@ func (t workflowTransformer) Transformer(typ reflect.Type) func(dst, src reflect
 
 				if len(srcOn.Schedule) == 0 {
 					srcOn.Schedule = dstOn.Schedule
+				} else {
+					allSchedules := append(dstOn.Schedule, srcOn.Schedule...)
+					newList := []Schedule{}
+					keys := map[string]bool{}
+
+					for _, s := range allSchedules {
+						if _, value := keys[s.Cron]; !value && s.Cron != "" {
+							keys[s.Cron] = true
+							newList = append(newList, s)
+						}
+					}
+					srcOn.Schedule = newList
 				}
 
 				dst.Set(reflect.ValueOf(srcOn))
