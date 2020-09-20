@@ -65,7 +65,7 @@ This directory follows the same structure as your `.github` folder. All files ar
 
 - **Deleting:** Fields present in the remote template that have been removed from the local template will not be deleted from the remote template unless the change can't be propertly merged.
 
-In all scenarios we try to avoid losing data. This is the case for entire Jobs, Steps (with the same `name` or `id` field) and Maps, String Arrays of unambiguous objects. You can start from scratch when you delete the remote file. The current merging strategy doesn't envisage updating remote files manually on the repository.
+In all scenarios we try to merge lossless. This is the case for entire Jobs, Steps (with the same `name` or `id` field) and Maps, String Arrays of unambiguous objects. In almost any case you wo't delete data because the remote template is used as fallback when possible. You local template has always precedence in all other cases.
 
 ## Installation
 
