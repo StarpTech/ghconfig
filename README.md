@@ -61,11 +61,11 @@ This directory follows the same structure as your `.github` folder. All files ar
 
 - **Adding:** Fields present in the local template that are missing from the remote template will be added to the remote template.
 
-- **Updating:** Fields present in the local template will be merged recursively until a primitive field is updated, or a field is added. Primitive fields present in the remote template are preserved when fields address the same entity and the fields in the local template are empty.
+- **Updating:** Fields present in the local template will be merged recursively until a primitive field is updated, or a field is added. Primitive fields, values of maps and string arrays present in the remote template are preserved when the local fields are empty.
 
-- **Deleting:** Fields present in the remote template that have been removed from the local template will be deleted from the remote template unless fields address the same entity.
+- **Deleting:** Fields present in the remote template that have been removed from the local template will not be deleted from the remote template unless the change can't be propertly merged.
 
-In all scenarios we try to preserve fields which belongs to the same entity. This is the case for Jobs and Steps (with Name or ID field) You can start from scratch when you delete the remote file. The current merging strategy doesn't envisage updating remote files manually.
+In all scenarios we try to avoid losing data. This is the case for entire Jobs, Steps (with the same `name` or `id` field) and Maps, String Arrays of unambiguous objects. You can start from scratch when you delete the remote file. The current merging strategy doesn't envisage updating remote files manually on the repository.
 
 ## Installation
 
