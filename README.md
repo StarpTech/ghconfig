@@ -21,7 +21,12 @@ No problem, `ghconfig` helps you to automate such tasks. You have two options:
 By default a Pull-Request is created for all changes on a repository.
 Ghconfig looks for a folder `.ghconfig` in the root of your repository. 
 
-**Example:** We will create a workflow `ci.yaml` and apply one patch to an existing workflow `release.yml`.
+**Example:** We will create a workflow `ci.yaml` and apply one patch to an existing workflow `release.yml` on all repositories in the organization `foo`.
+
+```
+$ ghconfig sync --query=org:foo
+$ ghconfig patch --query=org:foo
+```
 
 ```
 .
