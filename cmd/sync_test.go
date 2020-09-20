@@ -268,8 +268,9 @@ func TestSync_WorkflowExistOnRemote(t *testing.T) {
 					},
 				},
 				Env: map[string]string{
-					"A":  "o/r",
-					"CI": "true",
+					"A":   "o/r",
+					"CI":  "true",
+					"foo": "bar",
 				},
 				Name: "Node CI",
 				Jobs: map[string]*gh.Job{

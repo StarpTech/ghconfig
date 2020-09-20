@@ -72,6 +72,7 @@ func mergeUpdates(src, dst *Updates) {
 		for _, dstIgnore := range dst.Ignore {
 			if srcIgnore.DependencyName == dstIgnore.DependencyName {
 				srcIgnore.Versions = common.Unique(srcIgnore.Versions, dstIgnore.Versions)
+				break
 			}
 		}
 	}

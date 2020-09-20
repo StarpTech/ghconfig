@@ -15,8 +15,8 @@ type testCase struct {
 
 func TestSync_MergeDependabot(t *testing.T) {
 
-	// dst: Remote Workflow on github
-	// src: templated local worklfow
+	// dst: Remote file on github
+	// src: templated local file
 	testcases := []testCase{
 		{
 			Description: "Dst is always overriden by Src",

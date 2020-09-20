@@ -76,9 +76,8 @@ func (t workflowTransformer) Transformer(typ reflect.Type) func(dst, src reflect
 				for sk, sj := range srcJobs {
 					for dk, dj := range dstJobs {
 						if sk == dk {
-							if err := mergeJobs(sj, dj); err != nil {
-								return err
-							}
+							mergeJobs(sj, dj)
+
 						}
 					}
 					dst.SetMapIndex(reflect.ValueOf(sk), reflect.ValueOf(sj))
@@ -97,7 +96,7 @@ func MergeWorkflow(dst *GithubWorkflow, src GithubWorkflow) error {
 	)
 }
 
-func mergeJobs(src, dst *Job) error {
+func mergeJobs(src, dst *Job) {
 	src.Env = common.MergeStringMap(dst.Env, src.Env)
 	src.Needs = common.Unique(src.Needs, dst.Needs)
 	src.Outputs = common.MergeStringMap(dst.Outputs, src.Outputs)
@@ -121,9 +120,7 @@ func mergeJobs(src, dst *Job) error {
 		src.Defaults.Run.Shell = dst.Defaults.Run.Shell
 	}
 
-	if err := mergeJobStrategy(src, dst); err != nil {
-		return err
-	}
+	mergeJobStrategy(src, dst)
 
 	mergeJobContainer(src, dst)
 
@@ -138,8 +135,6 @@ func mergeJobs(src, dst *Job) error {
 	} else {
 		mergeJobSteps(src, dst)
 	}
-
-	return nil
 }
 
 func isSameStep(a, b *Step) bool {
@@ -189,7 +184,7 @@ func mergeJobSteps(src, dst *Job) {
 	}
 }
 
-func mergeJobStrategy(src, dst *Job) error {
+func mergeJobStrategy(src, dst *Job) {
 	if !src.Strategy.FailFast {
 		src.Strategy.FailFast = dst.Strategy.FailFast
 	}
@@ -200,7 +195,7 @@ func mergeJobStrategy(src, dst *Job) error {
 
 	if len(src.Strategy.Matrix) == 0 {
 		src.Strategy.Matrix = dst.Strategy.Matrix
-		return nil
+		return
 	}
 
 	for srcKey, srcVal := range src.Strategy.Matrix {
@@ -208,23 +203,20 @@ func mergeJobStrategy(src, dst *Job) error {
 			if srcKey == dstKey {
 				switch srcValType := srcVal.(type) {
 				case []interface{}:
-					for _, v := range srcValType {
-						if sv, ok := v.([]string); ok {
-							if len(sv) == 0 {
-								if dstArray, ok := dstVal.([]string); ok {
-									src.Strategy.Matrix[srcKey] = dstArray
-								}
-							} else {
-								return fmt.Errorf("dst.Strategy.Matrix[%s] can't be type asserted to []string", srcKey)
+					stringArray := []interface{}{}
+					newArray := []string{}
+					if d, ok := dstVal.([]interface{}); ok {
+						for _, a := range d {
+							if av, ok := a.(string); ok {
+								stringArray = append(stringArray, av)
 							}
-						} else if _, ok := v.([]map[string]string); ok {
-							if dstArrayMap, ok := dstVal.([]map[string]string); ok {
-								if len(srcValType) == 0 {
-									src.Strategy.Matrix[srcKey] = dstArrayMap
-								}
-							} else {
-								return fmt.Errorf("dst.Strategy.Matrix[%s] can't be type asserted to []map[string]string", srcKey)
+						}
+						if len(stringArray) > 0 {
+							stringArray = append(stringArray, srcValType...)
+							for _, l := range stringArray {
+								newArray = append(newArray, fmt.Sprintf("%v", l))
 							}
+							src.Strategy.Matrix[srcKey] = common.Unique(newArray, []string{})
 						}
 					}
 				default:
@@ -236,7 +228,6 @@ func mergeJobStrategy(src, dst *Job) error {
 			}
 		}
 	}
-	return nil
 }
 
 func mergeJobContainer(src, dst *Job) {

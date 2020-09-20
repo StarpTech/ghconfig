@@ -15,8 +15,8 @@ type testCase struct {
 
 func TestSync_MergeWorkflow(t *testing.T) {
 
-	// dst: Remote Workflow on github
-	// src: templated local worklfow
+	// dst: Remote file on github
+	// src: templated local file
 	testcases := []testCase{
 		{
 			Description: "Primitive and array values are overriden by Src",
@@ -206,6 +206,7 @@ func TestSync_MergeWorkflow(t *testing.T) {
 						Strategy: Strategy{
 							Matrix: map[string]interface{}{
 								"node-version": []MatrixValue{"12.x", "14.x"},
+								"os":           []MatrixValue{"ubuntu-latest", "windows-latest", "macOS-latest"},
 								"include": []MatrixValue{
 									map[string]string{"node": "12"},
 								},
@@ -248,9 +249,9 @@ func TestSync_MergeWorkflow(t *testing.T) {
 						Strategy: Strategy{
 							Matrix: map[string]interface{}{
 								"node-version": []MatrixValue{"12.x", "13.x", "14.x"},
+								"os":           []MatrixValue{"ubuntu-latest", "windows-latest"},
 								"include": []MatrixValue{
-									map[string]string{"node": "12", "os": "windows-latest"},
-									map[string]string{"not_exist_in_src": "12"},
+									map[string]string{"node": "12"},
 								},
 							},
 						},
@@ -296,10 +297,10 @@ func TestSync_MergeWorkflow(t *testing.T) {
 						},
 						Strategy: Strategy{
 							Matrix: Matrix{
-								"node-version": []MatrixValue{"12.x", "13.x", "14.x"},
+								"node-version": []string{"12.x", "13.x", "14.x"},
+								"os":           []string{"macOS-latest", "ubuntu-latest", "windows-latest"},
 								"include": []MatrixValue{
-									map[string]string{"node": "12", "os": "windows-latest"},
-									map[string]string{"not_exist_in_src": "12"},
+									map[string]string{"node": "12"},
 								},
 							},
 						},
