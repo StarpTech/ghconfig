@@ -44,8 +44,12 @@ $ ghconfig patch --query=org:foo
 
 > _All other Community Health files like (SUPPORT.md, CONTRIBUTING.md, ISSUE templates) can be managed by a repository called [`.github`](https://docs.github.com/en/github/building-a-strong-community/creating-a-default-community-health-file#about-default-community-health-files) in the user or organization._
 
-This directory follows the same structure as your `.github` folder. All files are handled as a [Go template](https://golang.org/pkg/text/template/) and you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and to all utility functions of [sprig](http://masterminds.github.io/sprig/).
+This directory follows the same structure as your `.github` folder. All files are handled as a [Go template](https://golang.org/pkg/text/template/) and you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and to all utility functions of [sprig](http://masterminds.github.io/sprig/):
 
+**Example:** 
+
+- `$(( .Repo.GetFullName ))`.
+- `$(( uuidv4 ))`.
 
 ## Usage
 
