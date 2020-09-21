@@ -48,8 +48,8 @@ This directory follows the same structure as your `.github` folder. All files ar
 
 **Example:** 
 
-- `$(( .Repo.GetFullName ))`.
-- `$(( uuidv4 ))`.
+- `$(( .Repo.GetFullName ))`
+- `$(( uuidv4 ))`
 
 ## Usage
 
