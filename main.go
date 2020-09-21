@@ -26,6 +26,7 @@ var (
 	githubToken     = app.Flag("github-token", "Your personal github access token.").OverrideDefaultFromEnvar("GITHUB_TOKEN").Short('t').Required().String()
 	createPR        = app.Flag("create-pr", "Create a new branch and PR for all changes.").Default("true").Short('p').Bool()
 	repositoryQuery = app.Flag("query", "Search query (e.g org:ORGNAME, repo:owner/name)").Short('f').String()
+	commitMessage   = app.Flag("commit-msg", "Git commit message.").Short('m').String()
 	syncCommand     = app.Command("sync", "Synchronize all configuration files.")
 	patchCommand    = app.Command("patch", "Apply all JSON patches on existing workflows.")
 )
@@ -67,6 +68,7 @@ func main() {
 			Sid:             sid,
 			CreatePR:        *createPR,
 			RepositoryQuery: *repositoryQuery,
+			CommitMessage:   *commitMessage,
 			RootDir:         pDir,
 		}
 		if err := cmd.NewSyncCmd(cfg); err != nil {
@@ -82,6 +84,7 @@ func main() {
 			CreatePR:        *createPR,
 			RepositoryQuery: *repositoryQuery,
 			RootDir:         pDir,
+			CommitMessage:   *commitMessage,
 			PatchOnly:       true,
 		}
 		if err := cmd.NewSyncCmd(cfg); err != nil {

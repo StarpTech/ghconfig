@@ -219,6 +219,10 @@ func UpdateRepositoryFiles(opts *config.Config, updateOptions *config.Repository
 		// commit message
 		commitMsg := fmt.Sprintf("Update %v file by ghconfig", file.RepositoryUpdateOptions.DisplayName)
 
+		if opts.CommitMessage != "" {
+			commitMsg = opts.CommitMessage
+		}
+
 		rr, _, err := opts.GithubClient.Repositories.UpdateFile(
 			opts.Context,
 			updateOptions.Owner,

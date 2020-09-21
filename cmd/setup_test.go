@@ -1,11 +1,8 @@
 package cmd
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"ghconfig/internal/dependabot"
-	gh "ghconfig/internal/github"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -16,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/google/go-github/v32/github"
-	"gopkg.in/yaml.v3"
 )
 
 type (
@@ -80,24 +76,11 @@ func testMethod(t *testing.T, r *http.Request, want string) {
 
 type values map[string]string
 
-func readWorkflow(r io.ReadCloser) gh.GithubWorkflow {
-	var result map[string]string
+func readRepositoryContentFileOptions(r io.ReadCloser) github.RepositoryContentFileOptions {
+	var result github.RepositoryContentFileOptions
 	bytes, _ := ioutil.ReadAll(r)
 	json.Unmarshal(bytes, &result)
-	sDec, _ := base64.StdEncoding.DecodeString(result["content"])
-	t := gh.GithubWorkflow{}
-	yaml.Unmarshal(sDec, &t)
-	return t
-}
-
-func readDependabot(r io.ReadCloser) dependabot.GithubDependabot {
-	var result map[string]string
-	bytes, _ := ioutil.ReadAll(r)
-	json.Unmarshal(bytes, &result)
-	sDec, _ := base64.StdEncoding.DecodeString(result["content"])
-	t := dependabot.GithubDependabot{}
-	yaml.Unmarshal(sDec, &t)
-	return t
+	return result
 }
 
 func testFormValues(t *testing.T, r *http.Request, values values) {

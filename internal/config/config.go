@@ -29,6 +29,7 @@ type (
 		Sid             IDGenerator
 		RepositoryQuery string
 		RootDir         string
+		CommitMessage   string
 		PatchOnly       bool
 	}
 
