@@ -32,7 +32,7 @@ var (
 )
 
 func main() {
-	app.Version("0.14.0")
+	app.Version("0.15.0")
 	_, err := app.Parse(os.Args[1:])
 	if err != nil {
 		log.WithError(err).Fatalf("could not parse args")
