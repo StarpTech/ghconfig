@@ -19,7 +19,9 @@ import (
 	"github.com/cheynewallace/tabby"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/google/go-github/v32/github"
+	"github.com/k0kubun/go-ansi"
 	"github.com/pieterclaerhout/go-waitgroup"
+	"github.com/schollz/progressbar/v3"
 	"gopkg.in/yaml.v3"
 )
 
@@ -89,10 +91,6 @@ func NewSyncCmd(globalOptions *config.Config) error {
 		return err
 	}
 
-	s = spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-	s.Suffix = " Update workflow files and create pull requests..."
-
-	s.Start()
 	start := time.Now()
 
 	t := tabby.New()
@@ -101,13 +99,28 @@ func NewSyncCmd(globalOptions *config.Config) error {
 	wg := waitgroup.NewWaitGroup(3)
 	var results = make(chan *config.RepositoryUpdate, len(targetRepos))
 
-	for _, repoFullName := range targetRepos {
+	bar := progressbar.NewOptions(len(targetRepos),
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetDescription("Handle Repositories..."),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}))
+
+	for _, name := range targetRepos {
+		repositoryName := name
 		wg.Add(func() {
-			repo := getRepoByName(repos, repoFullName)
+			defer bar.Add(1)
+			repo := getRepoByName(repos, repositoryName)
 			branchName := globalOptions.BaseBranch
 
 			ctx := log.WithFields(log.Fields{
-				"repository": repoFullName,
+				"repository": repositoryName,
 			})
 
 			if globalOptions.CreatePR {
@@ -209,7 +222,7 @@ func NewSyncCmd(globalOptions *config.Config) error {
 		}
 	}
 
-	fmt.Println()
+	fmt.Print("\n\n")
 	t.Print()
 
 	if globalOptions.DryRun {
