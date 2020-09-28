@@ -11,15 +11,15 @@
 Managing Workflow and Dependabot files can be in organizations very exhausting because there is no way to apply changes in a batch.
 
 - You need to adjust your compatibility matrix from `13.x` to `14.x` on 50 repositories?
-- You want to standardize your CI by managing all workflows in a single repository?
+- You want to standardize your CI by managing all workflows from a single repository?
 
-No problem, `ghconfig` helps you to automate such tasks. You have two options:
+In both cases, no data is lost, only updated or added. `ghconfig` helps you to automate such tasks. You have two options to update your files:
 
 - Strategic two-way merge of your local and remote files.
 - Apply a [RFC6902 JSON patch](http://tools.ietf.org/html/rfc6902) on a remote workflow file.
 
 By default a Pull-Request is created for all changes on a repository.
-Ghconfig looks for a folder `.ghconfig` in the root of your repository. 
+Ghconfig looks for a folder `.ghconfig` in the root of your repository.
 
 **Example:** We will create a workflow `ci.yaml` and apply one patch to an existing workflow `release.yml` on all repositories in the organization `foo`.
 
@@ -46,7 +46,7 @@ $ ghconfig patch --query=org:foo
 
 This directory follows the same structure as your `.github` folder. All files are handled as a [Go template](https://golang.org/pkg/text/template/) and you have access to the full [Repository](https://pkg.go.dev/github.com/google/go-github/v32/github?tab=doc#Repository) object of the [go-github](https://pkg.go.dev/github.com/google/go-github) library and to all utility functions of [sprig](http://masterminds.github.io/sprig/):
 
-**Example:** 
+**Example:**
 
 - `$(( .Repo.GetFullName ))`
 - `$(( uuidv4 ))`
