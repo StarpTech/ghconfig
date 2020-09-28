@@ -91,11 +91,6 @@ func NewSyncCmd(globalOptions *config.Config) error {
 		return err
 	}
 
-	start := time.Now()
-
-	t := tabby.New()
-	t.AddHeader("Repository", "Files", "Url")
-
 	wg := waitgroup.NewWaitGroup(3)
 	var results = make(chan *config.RepositoryUpdate, len(targetRepos))
 
@@ -103,7 +98,7 @@ func NewSyncCmd(globalOptions *config.Config) error {
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("Handle Repositories..."),
+		progressbar.OptionSetDescription("Processing repositories..."),
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "[green]=[reset]",
 			SaucerHead:    "[green]>[reset]",
@@ -194,36 +189,22 @@ func NewSyncCmd(globalOptions *config.Config) error {
 	close(results)
 
 	s.Stop()
-	elapsed := time.Since(start)
 
 	updates := []*config.RepositoryUpdate{}
 	for pkg := range results {
 		updates = append(updates, pkg)
 	}
 
+	table := tabby.New()
+	table.AddHeader("Repository", "Pull-Request")
+
 	// build table for cli output
 	for _, pkg := range updates {
-		for i, file := range pkg.Files {
-			if i == 0 {
-				url := ""
-				if pkg.PullRequestURL != "" {
-					url = pkg.PullRequestURL
-				} else {
-					url = file.RepositoryUpdateOptions.URL
-				}
-				t.AddLine(pkg.Repository.GetFullName(), file.RepositoryUpdateOptions.DisplayName, url)
-			} else {
-				url := ""
-				if pkg.PullRequestURL == "" {
-					url = file.RepositoryUpdateOptions.URL
-				}
-				t.AddLine("", file.RepositoryUpdateOptions.DisplayName, url)
-			}
-		}
+		table.AddLine(pkg.Repository.GetFullName(), pkg.PullRequestURL)
 	}
 
 	fmt.Print("\n\n")
-	t.Print()
+	table.Print()
 
 	if globalOptions.DryRun {
 		file, err := os.Create(path.Join(globalOptions.RootDir, "ghconfig-debug.yml"))
@@ -259,8 +240,6 @@ func NewSyncCmd(globalOptions *config.Config) error {
 		}
 		fmt.Printf("\nData has been written to ghconfig-debug.yml\n")
 	}
-
-	fmt.Printf("\nComplete! %s\n", elapsed)
 
 	return nil
 }
